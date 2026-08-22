@@ -15,13 +15,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const state = await request.json<{ tenants: unknown[] }>();
+  const state = await request.json<{ tenants: unknown[]; maintenance?: unknown[] }>();
   if (!Array.isArray(state.tenants)) return Response.json({ error: 'Invalid state' }, { status: 400 });
   await ensureStateTable();
   await env.DB.prepare(`INSERT INTO mvp_state (id, payload, updated_at)
     VALUES (?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`)
-    .bind(1, JSON.stringify({ tenants: state.tenants }), new Date().toISOString())
+    .bind(1, JSON.stringify({ tenants: state.tenants, maintenance: Array.isArray(state.maintenance) ? state.maintenance : [] }), new Date().toISOString())
     .run();
   return Response.json({ ok: true });
 }

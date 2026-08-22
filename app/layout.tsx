@@ -3,17 +3,17 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL ?? 'http://localhost:3000'),
-  title: 'RentWise — Property operations made simple',
-  description: 'Manage rooms, tenants, deposits and rent collections without spreadsheets.',
+  title: 'RentWise — Your property, under control',
+  description: 'An owner-first workspace for rooms, tenants, rent and maintenance.',
   openGraph: {
     title: 'RentWise',
-    description: 'Rooms, tenants and rent — in one place.',
+    description: 'Your property, tenants and rent — clearly under control.',
     images: [{ url: '/og.png', width: 1200, height: 630, alt: 'RentWise property management dashboard' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'RentWise',
-    description: 'Rooms, tenants and rent — in one place.',
+    description: 'Your property, tenants and rent — clearly under control.',
     images: ['/og.png'],
   },
 };
