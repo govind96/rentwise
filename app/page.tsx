@@ -257,8 +257,9 @@ function Overview({ tenants, orders, metrics, availableBeds, onView, onTenant, o
 
       <article className="surface collection-card"><div className="surface-head"><div><p className="overline">AUGUST COLLECTION</p><h2>Collection pulse</h2></div><button className="link-button" onClick={() => onView('rent')}>Open ledger <span>→</span></button></div>
         <div className="collection-hero"><div className="ring" style={{ '--progress': `${collectionPercent}%` } as React.CSSProperties}><div><strong>{collectionPercent}%</strong><span>received</span></div></div><div className="collection-total"><span>Collected so far</span><strong>{money.format(metrics.collected)}</strong><small>of {money.format(metrics.expected)} due this month</small></div></div>
+        <div className="collection-progress"><div><span>Month progress</span><strong>{collectionPercent}% received</strong></div><div className="wide-meter" aria-label={`${collectionPercent}% of August receivables collected`}><i style={{ width: `${collectionPercent}%` }} /></div></div>
         <div className="collection-breakdown"><div><span>Still to collect</span><strong>{money.format(metrics.pending)}</strong><small>{pending.length} residents need a follow-up</small></div><div><span>Recurring rent</span><strong>{money.format(metrics.recurringCollected)}</strong><small>of {money.format(metrics.recurringExpected)} received</small></div></div>
-        <div className="insight"><span>↗</span><p><strong>Collections are healthy.</strong> Recurring August rent is fully collected; the remaining balance is from new allotments.</p></div>
+        <div className="insight"><span>↗</span><p><strong>Follow-up is focused.</strong> {pending.length} residents account for {money.format(metrics.pending)} still to collect this month.</p></div>
       </article>
     </section>
 
