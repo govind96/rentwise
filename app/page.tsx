@@ -81,12 +81,12 @@ function proratedRent(monthlyRent: number, allotment: string) {
 }
 
 const viewCopy: Record<View, { eyebrow: string; title: string; subtitle: string }> = {
-  overview: { eyebrow: 'SATURDAY, 22 AUGUST', title: 'Good morning, Govind.', subtitle: 'Here’s a calm, clear look at what your property needs today.' },
-  property: { eyebrow: 'PROPERTY', title: 'Rooms & occupancy', subtitle: 'See every room, bed and tenant without opening a spreadsheet.' },
-  tenants: { eyebrow: 'PEOPLE', title: 'Tenant directory', subtitle: 'Complete resident records, payment standing and documents in one place.' },
-  rent: { eyebrow: 'MONEY', title: 'Rent & collections', subtitle: 'Know what came in, what is pending and who needs a reminder.' },
-  maintenance: { eyebrow: 'OPERATIONS', title: 'Maintenance desk', subtitle: 'Track issues from first report to completed repair.' },
-  documents: { eyebrow: 'TENANT RECORDS', title: 'Documents & agreements', subtitle: 'Keep identity proofs, rental agreements and follow-ups together.' },
+  overview: { eyebrow: 'Saturday, 22 August', title: 'Good morning, Govind.', subtitle: 'Here’s a calm, clear look at what your property needs today.' },
+  property: { eyebrow: 'Property', title: 'Rooms & occupancy', subtitle: 'See every room, bed and tenant without opening a spreadsheet.' },
+  tenants: { eyebrow: 'People', title: 'Tenant directory', subtitle: 'Complete resident records, payment standing and documents in one place.' },
+  rent: { eyebrow: 'Money', title: 'Rent & collections', subtitle: 'Know what came in, what is pending and who needs a reminder.' },
+  maintenance: { eyebrow: 'Operations', title: 'Maintenance desk', subtitle: 'Track issues from first report to completed repair.' },
+  documents: { eyebrow: 'Tenant records', title: 'Documents & agreements', subtitle: 'Keep identity proofs, rental agreements and follow-ups together.' },
 };
 
 export default function Home() {
@@ -181,7 +181,7 @@ export default function Home() {
 
       <div className="workspace">
         <div className="mobile-topbar"><button className="mobile-brand" onClick={() => goTo('overview')}><span>R</span><strong>RentWise</strong></button><button className="mobile-lookup" onClick={() => { setFilter('all'); goTo('tenants'); }}><span>⌕</span><em>Search tenant or room</em></button><button className="mobile-create" aria-label="Create new allotment" onClick={() => setModal('tenant')}>＋</button></div>
-        <div className="mobile-nav">{(['overview', 'property', 'tenants', 'rent', 'documents', 'maintenance'] as View[]).map((item) => <button key={item} className={view === item ? 'active' : ''} onClick={() => goTo(item)}>{item === 'overview' ? 'Today' : item}</button>)}</div>
+        <div className="mobile-nav">{(['overview', 'property', 'tenants', 'rent', 'documents', 'maintenance'] as View[]).map((item) => <button key={item} className={view === item ? 'active' : ''} onClick={() => goTo(item)}>{({ overview: 'Today', property: 'Property', tenants: 'Tenants', rent: 'Rent', documents: 'Documents', maintenance: 'Repairs' } as Record<View, string>)[item]}</button>)}</div>
         <main className="view-stage" key={view}>
         <header className="page-head">
           <div><p className="overline">{copy.eyebrow}</p><h1>{copy.title}</h1><p>{copy.subtitle}</p></div>
