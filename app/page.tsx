@@ -81,7 +81,7 @@ function proratedRent(monthlyRent: number, allotment: string) {
 }
 
 const viewCopy: Record<View, { eyebrow: string; title: string; subtitle: string }> = {
-  overview: { eyebrow: 'SATURDAY, 22 AUGUST', title: 'Saffron Stay, at a glance', subtitle: 'A clear view of occupancy, collections and tasks for your PG today.' },
+  overview: { eyebrow: 'SATURDAY, 22 AUGUST', title: 'Your property, in focus', subtitle: 'A clear daily view of occupancy, collections and owner actions at Saffron Stay.' },
   property: { eyebrow: 'PROPERTY', title: 'Rooms & occupancy', subtitle: 'See every room, bed and tenant without opening a spreadsheet.' },
   tenants: { eyebrow: 'PEOPLE', title: 'Tenant directory', subtitle: 'Complete resident records, payment standing and documents in one place.' },
   rent: { eyebrow: 'MONEY', title: 'Rent & collections', subtitle: 'Know what came in, what is pending and who needs a reminder.' },
@@ -235,8 +235,8 @@ function Overview({ tenants, orders, metrics, availableBeds, onView, onTenant, o
     <section className="intelligence-row">
       <article className="ai-brief">
         <div className="ai-orb"><i /><i /><i /></div>
-        <div className="brief-copy"><p className="overline">RENTWISE INTELLIGENCE</p><h2>Your portfolio is healthy. Three actions will improve cash position.</h2><p><strong>{money.format(concentratedDue)}</strong> is concentrated across the two largest balances, <strong>{availableBeds} beds</strong> are ready to allot, and one urgent repair needs review.</p></div>
-        <button onClick={() => onView('rent')}>Open action plan <span>↗</span></button>
+        <div className="brief-copy"><p className="overline">OWNER BRIEF</p><h2>A healthier week starts with three clear actions.</h2><p><strong>{money.format(concentratedDue)}</strong> is concentrated across the two largest balances, <strong>{availableBeds} beds</strong> are ready to allot, and one urgent repair needs review.</p></div>
+        <button onClick={() => onView('rent')}>See action plan <span>↗</span></button>
       </article>
       <article className="trend-card">
         <div className="trend-head"><div><span>Collection momentum</span><strong>+18.4%</strong></div><em>Last 7 days</em></div>
