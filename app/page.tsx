@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 
-type View = 'overview' | 'property' | 'tenants' | 'rent' | 'maintenance';
+type View = 'overview' | 'property' | 'tenants' | 'rent' | 'maintenance' | 'documents';
 type Tenant = {
   id: number; room: string; bed: string; name: string; allotment: string;
   rent: number; security: number; firstMonthRent: number; received: number;
@@ -86,6 +86,7 @@ const viewCopy: Record<View, { eyebrow: string; title: string; subtitle: string 
   tenants: { eyebrow: 'PEOPLE', title: 'Tenant directory', subtitle: 'Complete resident records, payment standing and documents in one place.' },
   rent: { eyebrow: 'MONEY', title: 'Rent & collections', subtitle: 'Know what came in, what is pending and who needs a reminder.' },
   maintenance: { eyebrow: 'OPERATIONS', title: 'Maintenance desk', subtitle: 'Track issues from first report to completed repair.' },
+  documents: { eyebrow: 'TENANT RECORDS', title: 'Documents & agreements', subtitle: 'Keep identity proofs, rental agreements and follow-ups together.' },
 };
 
 export default function Home() {
@@ -172,7 +173,7 @@ export default function Home() {
         <nav aria-label="Owner workspace">
           <p>WORKSPACE</p>
           {([
-            ['overview', '⌂', 'Today'], ['property', '▦', 'Property'], ['tenants', '♙', 'Tenants'], ['rent', '₹', 'Rent & payments'], ['maintenance', '◇', 'Maintenance'],
+            ['overview', '⌂', 'Today'], ['property', '▦', 'Property'], ['tenants', '♙', 'Tenants'], ['rent', '₹', 'Rent & payments'], ['documents', '⌑', 'Documents'], ['maintenance', '◇', 'Maintenance'],
           ] as [View, string, string][]).map(([id, icon, label]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => goTo(id)}><i>{icon}</i><span>{label}</span>{id === 'rent' && <b>{tenants.filter((tenant) => balanceFor(tenant) > 0).length}</b>}{id === 'maintenance' && <b>{orders.filter((order) => order.status !== 'resolved').length}</b>}</button>)}
         </nav>
         <div className="side-bottom"><div className="owner-chip"><span>SK</span><div><strong>Sample owner</strong><small>Demo workspace</small></div><b>•••</b></div><p className="no-login">Public demo · No login required</p></div>
@@ -180,19 +181,20 @@ export default function Home() {
 
       <div className="workspace">
         <div className="mobile-topbar"><button className="mobile-brand" onClick={() => goTo('overview')}><span>R</span><strong>RentWise</strong></button><button className="mobile-lookup" onClick={() => { setFilter('all'); goTo('tenants'); }}><span>⌕</span><em>Search tenant or room</em></button><button className="mobile-create" aria-label="Create new allotment" onClick={() => setModal('tenant')}>＋</button></div>
-        <div className="mobile-nav">{(['overview', 'property', 'tenants', 'rent', 'maintenance'] as View[]).map((item) => <button key={item} className={view === item ? 'active' : ''} onClick={() => goTo(item)}>{item === 'overview' ? 'Today' : item}</button>)}</div>
+        <div className="mobile-nav">{(['overview', 'property', 'tenants', 'rent', 'documents', 'maintenance'] as View[]).map((item) => <button key={item} className={view === item ? 'active' : ''} onClick={() => goTo(item)}>{item === 'overview' ? 'Today' : item}</button>)}</div>
         <main className="view-stage" key={view}>
         <header className="page-head">
           <div><p className="overline">{copy.eyebrow}</p><h1>{copy.title}</h1><p>{copy.subtitle}</p></div>
           <div className="head-actions"><span className="live-state"><i /> Live</span><button className="quiet-button" onClick={() => { setView('tenants'); setFilter('pending'); }}>⌕ Find tenant</button><button className="main-button" onClick={() => setModal('tenant')}>＋ New allotment</button></div>
         </header>
 
-        {view === 'overview' && <button className="command-trigger" onClick={() => setAssistantOpen(true)}><span>✦</span><div><strong>Ask RentWise</strong><em>“Who should I follow up with today?”</em></div><kbd>Ctrl K</kbd></button>}
+        {view === 'overview' && <button className="command-trigger" onClick={() => setAssistantOpen(true)}><span>✦</span><div><strong>Ask RentWise anything</strong><em>Try “Who needs a rent reminder?” or “Which room is available?”</em></div><b>Start a conversation <i>↗</i></b></button>}
 
         {view === 'overview' && <Overview tenants={tenants} orders={orders} metrics={metrics} availableBeds={availableBeds.length} onView={goTo} onTenant={setDrawerId} onPayment={openPayment} />}
         {view === 'property' && <PropertyView tenants={tenants} onTenant={setDrawerId} onAdd={() => setModal('tenant')} />}
         {view === 'tenants' && <TenantsView tenants={filteredTenants} query={query} filter={filter} onQuery={setQuery} onFilter={setFilter} onTenant={setDrawerId} onPayment={openPayment} />}
         {view === 'rent' && <RentView tenants={tenants} metrics={metrics} onTenant={setDrawerId} onPayment={openPayment} />}
+        {view === 'documents' && <DocumentsView tenants={tenants} onTenant={setDrawerId} onToast={showToast} />}
         {view === 'maintenance' && <MaintenanceView orders={orders} onUpdate={updateOrder} />}
         </main>
       </div>
@@ -286,6 +288,11 @@ function RentView({ tenants, metrics, onTenant, onPayment }: { tenants: Tenant[]
     <section className="rent-layout"><article className="surface dues"><div className="surface-head"><div><p className="overline">FOLLOW-UP QUEUE</p><h2>Outstanding dues</h2></div><span>{pending.length} tenants</span></div><div className="due-list">{pending.map((tenant) => <div key={tenant.id}><button className="due-person" onClick={() => onTenant(tenant.id)}><span>{tenant.name.slice(0,1)}</span><p><strong>{tenant.name}</strong><small>Room {tenant.room} · Bed {tenant.bed}</small></p></button><div className="due-amount"><strong>{money.format(balanceFor(tenant))}</strong><small>of {money.format(dueFor(tenant))}</small></div><button className="record-button" onClick={() => onPayment(tenant.id)}>Record payment</button></div>)}</div></article>
       <aside className="rent-side"><article className="surface breakdown"><div className="surface-head"><div><p className="overline">RECEIVABLES</p><h2>What makes up August</h2></div></div><div><span>Security deposits</span><strong>{money.format(tenants.reduce((sum,tenant)=>sum+tenant.security,0))}</strong></div><div><span>Prorated first rent</span><strong>{money.format(tenants.reduce((sum,tenant)=>sum+tenant.firstMonthRent,0))}</strong></div><div><span>Recurring rent</span><strong>{money.format(metrics.recurringExpected)}</strong></div><footer><span>Total tracked</span><strong>{money.format(metrics.expected + metrics.recurringExpected)}</strong></footer></article><article className="rent-note"><span>₹</span><p><strong>Made for split payments.</strong> Record any number of receipts against one tenant; RentWise keeps the remaining balance clear.</p></article></aside>
     </section></div>;
+}
+
+function DocumentsView({ tenants, onTenant, onToast }: { tenants: Tenant[]; onTenant: (id: number) => void; onToast: (message: string) => void }) {
+  const pending = tenants.filter((tenant) => profileFor(tenant).kyc === 'pending');
+  return <div className="view-stack"><section className="document-hero"><div><p className="overline">TENANT COMPLIANCE</p><h2>Everything you need, gently organised.</h2><p>Request a proof, review a submitted file, or prepare an agreement without chasing WhatsApp threads.</p></div><button className="main-button" onClick={() => onToast('Document request link copied')}>⌑ Request documents</button></section><section className="document-summary"><article><span>{tenants.length - pending.length}</span><p>Identity proofs verified<small>Ready and on file</small></p></article><article><span>{pending.length}</span><p>Proofs to review<small>Send a secure request link</small></p></article><article><span>{tenants.length}</span><p>Rental agreements<small>All tracked in one place</small></p></article></section><section className="surface document-list"><div className="surface-head"><div><p className="overline">FOLLOW-UP QUEUE</p><h2>Identity proof & agreement status</h2></div><button className="quiet-button" onClick={() => onToast('Agreement template is ready to review')}>Prepare agreement</button></div>{tenants.map((tenant) => { const profile = profileFor(tenant); const needs = profile.kyc === 'pending'; return <article key={tenant.id}><button className="due-person" onClick={() => onTenant(tenant.id)}><span>{tenant.name.slice(0,1)}</span><p><strong>{tenant.name}</strong><small>Room {tenant.room} · Bed {tenant.bed}</small></p></button><div><span className={`document ${profile.kyc}`}>{needs ? 'Identity proof pending' : 'Identity proof verified'}</span><small>Agreement valid until {profile.agreementEnd}</small></div><button className="record-button" onClick={() => onToast(needs ? `Request sent to ${tenant.name}` : `Opened documents for ${tenant.name}`)}>{needs ? 'Request proof' : 'View files'}</button></article>; })}</section></div>;
 }
 
 function MaintenanceView({ orders, onUpdate }: { orders: WorkOrder[]; onUpdate: (id: number) => void }) {
