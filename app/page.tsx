@@ -181,6 +181,7 @@ export default function Home() {
       <div className="workspace">
         <div className="mobile-topbar"><button className="mobile-brand" onClick={() => goTo('overview')}><span>R</span><strong>RentWise</strong></button><button className="mobile-lookup" onClick={() => { setFilter('all'); goTo('tenants'); }}><span>⌕</span><em>Search tenant or room</em></button><button className="mobile-create" aria-label="Create new allotment" onClick={() => setModal('tenant')}>＋</button></div>
         <div className="mobile-nav">{(['overview', 'property', 'tenants', 'rent', 'maintenance'] as View[]).map((item) => <button key={item} className={view === item ? 'active' : ''} onClick={() => goTo(item)}>{item === 'overview' ? 'Today' : item}</button>)}</div>
+        <main className="view-stage" key={view}>
         <header className="page-head">
           <div><p className="overline">{copy.eyebrow}</p><h1>{copy.title}</h1><p>{copy.subtitle}</p></div>
           <div className="head-actions"><span className="live-state"><i /> Live</span><button className="quiet-button" onClick={() => { setView('tenants'); setFilter('pending'); }}>⌕ Find tenant</button><button className="main-button" onClick={() => setModal('tenant')}>＋ New allotment</button></div>
@@ -193,6 +194,7 @@ export default function Home() {
         {view === 'tenants' && <TenantsView tenants={filteredTenants} query={query} filter={filter} onQuery={setQuery} onFilter={setFilter} onTenant={setDrawerId} onPayment={openPayment} />}
         {view === 'rent' && <RentView tenants={tenants} metrics={metrics} onTenant={setDrawerId} onPayment={openPayment} />}
         {view === 'maintenance' && <MaintenanceView orders={orders} onUpdate={updateOrder} />}
+        </main>
       </div>
 
       {drawerTenant && <TenantDrawer tenant={drawerTenant} onClose={() => setDrawerId(null)} onPayment={() => openPayment(drawerTenant.id)} />}
