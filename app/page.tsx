@@ -156,7 +156,7 @@ export default function Home() {
   return (
     <div className="shell">
       <aside className="side">
-        <button className="logo" onClick={() => goTo('overview')}><span>R</span><strong>RentWise</strong></button>
+        <button className="logo" onClick={() => goTo('overview')}><span>R</span><strong>RentWise</strong><em>OS</em></button>
         <button className="property-select" onClick={() => goTo('property')}><span className="property-thumb">V26</span><span><small>MANAGING</small><strong>Villa 26</strong><em>Sunshine Layout</em></span><b>⌄</b></button>
         <nav aria-label="Owner workspace">
           <p>WORKSPACE</p>
@@ -171,7 +171,7 @@ export default function Home() {
         <div className="mobile-nav">{(['overview', 'property', 'tenants', 'rent', 'maintenance'] as View[]).map((item) => <button key={item} className={view === item ? 'active' : ''} onClick={() => goTo(item)}>{item === 'overview' ? 'Today' : item}</button>)}</div>
         <header className="page-head">
           <div><p className="overline">{copy.eyebrow}</p><h1>{copy.title}</h1><p>{copy.subtitle}</p></div>
-          <div className="head-actions"><button className="quiet-button" onClick={() => { setView('tenants'); setFilter('pending'); }}>⌕ Find tenant</button><button className="main-button" onClick={() => setModal('tenant')}>＋ New allotment</button></div>
+          <div className="head-actions"><span className="live-state"><i /> Live</span><button className="quiet-button" onClick={() => { setView('tenants'); setFilter('pending'); }}>⌕ Find tenant</button><button className="main-button" onClick={() => setModal('tenant')}>＋ New allotment</button></div>
         </header>
 
         {view === 'overview' && <Overview tenants={tenants} orders={orders} metrics={metrics} availableBeds={availableBeds.length} onView={goTo} onTenant={setDrawerId} onPayment={openPayment} />}
@@ -192,12 +192,27 @@ export default function Home() {
 function Overview({ tenants, orders, metrics, availableBeds, onView, onTenant, onPayment }: { tenants: Tenant[]; orders: WorkOrder[]; metrics: ReturnType<typeof summaryShape>; availableBeds: number; onView: (view: View) => void; onTenant: (id: number) => void; onPayment: (id: number) => void }) {
   const pending = [...tenants].filter((tenant) => balanceFor(tenant) > 0).sort((a, b) => balanceFor(b) - balanceFor(a));
   const collectionPercent = Math.round((metrics.collected / metrics.expected) * 100);
+  const collectionTrend = [18, 28, 39, 47, 59, 72, collectionPercent];
+  const concentratedDue = pending.slice(0, 2).reduce((sum, tenant) => sum + balanceFor(tenant), 0);
   return <div className="view-stack">
     <section className="stat-row">
       <article className="stat-card feature"><div className="stat-top"><span className="stat-icon green">₹</span><em>August</em></div><p>Rent & deposits collected</p><strong>{money.format(metrics.collected)}</strong><div className="meter"><i style={{ width: `${collectionPercent}%` }} /></div><small><b>{collectionPercent}%</b> of {money.format(metrics.expected)} receivable</small></article>
       <article className="stat-card"><div className="stat-top"><span className="stat-icon orange">!</span><em className="attention">Needs attention</em></div><p>Outstanding balance</p><strong>{money.format(metrics.pending)}</strong><button onClick={() => onView('rent')}>{pending.length} tenants to follow up <span>→</span></button></article>
       <article className="stat-card"><div className="stat-top"><span className="stat-icon purple">▦</span><em>Villa 26</em></div><p>Current occupancy</p><strong>{metrics.occupied}<small> / {metrics.totalBeds} beds</small></strong><button onClick={() => onView('property')}>{availableBeds} beds are ready <span>→</span></button></article>
       <article className="stat-card"><div className="stat-top"><span className="stat-icon blue">◇</span><em>This week</em></div><p>Open maintenance</p><strong>{orders.filter((order) => order.status !== 'resolved').length}</strong><button onClick={() => onView('maintenance')}>1 urgent request <span>→</span></button></article>
+    </section>
+
+    <section className="intelligence-row">
+      <article className="ai-brief">
+        <div className="ai-orb"><i /><i /><i /></div>
+        <div className="brief-copy"><p className="overline">RENTWISE INTELLIGENCE</p><h2>Your portfolio is healthy. Three actions will improve cash position.</h2><p><strong>{money.format(concentratedDue)}</strong> is concentrated across the two largest balances, <strong>{availableBeds} beds</strong> are ready to allot, and one urgent repair needs review.</p></div>
+        <button onClick={() => onView('rent')}>Open action plan <span>↗</span></button>
+      </article>
+      <article className="trend-card">
+        <div className="trend-head"><div><span>Collection momentum</span><strong>+18.4%</strong></div><em>Last 7 days</em></div>
+        <div className="trend-chart" aria-label="Seven day collection trend">{collectionTrend.map((value, index) => <i key={index} style={{ height: `${Math.max(14, value)}%` }}><b /></i>)}</div>
+        <div className="trend-labels"><span>16 Aug</span><span>Today</span></div>
+      </article>
     </section>
 
     <section className="overview-main">
