@@ -97,6 +97,7 @@ export default function Home() {
   const [modal, setModal] = useState<'tenant' | 'payment' | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [drawerId, setDrawerId] = useState<number | null>(null);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [draftRent, setDraftRent] = useState(3000);
   const [draftDate, setDraftDate] = useState('2026-08-22');
@@ -107,6 +108,16 @@ export default function Home() {
       .then((data) => { if (!active) return; if (data?.tenants?.length) setTenants(data.tenants); if (data?.maintenance?.length) setOrders(data.maintenance); })
       .catch(() => undefined);
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault(); setAssistantOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onShortcut);
+    return () => window.removeEventListener('keydown', onShortcut);
   }, []);
 
   const metrics = useMemo(() => {
@@ -174,6 +185,8 @@ export default function Home() {
           <div className="head-actions"><span className="live-state"><i /> Live</span><button className="quiet-button" onClick={() => { setView('tenants'); setFilter('pending'); }}>⌕ Find tenant</button><button className="main-button" onClick={() => setModal('tenant')}>＋ New allotment</button></div>
         </header>
 
+        {view === 'overview' && <button className="command-trigger" onClick={() => setAssistantOpen(true)}><span>✦</span><div><strong>Ask RentWise</strong><em>“Who should I follow up with today?”</em></div><kbd>Ctrl K</kbd></button>}
+
         {view === 'overview' && <Overview tenants={tenants} orders={orders} metrics={metrics} availableBeds={availableBeds.length} onView={goTo} onTenant={setDrawerId} onPayment={openPayment} />}
         {view === 'property' && <PropertyView tenants={tenants} onTenant={setDrawerId} onAdd={() => setModal('tenant')} />}
         {view === 'tenants' && <TenantsView tenants={filteredTenants} query={query} filter={filter} onQuery={setQuery} onFilter={setFilter} onTenant={setDrawerId} onPayment={openPayment} />}
@@ -184,9 +197,25 @@ export default function Home() {
       {drawerTenant && <TenantDrawer tenant={drawerTenant} onClose={() => setDrawerId(null)} onPayment={() => openPayment(drawerTenant.id)} />}
       {modal === 'tenant' && <AddTenantModal availableBeds={availableBeds} draftDate={draftDate} draftRent={draftRent} onDate={setDraftDate} onRent={setDraftRent} onClose={() => setModal(null)} onSubmit={addTenant} />}
       {modal === 'payment' && selectedTenant && <PaymentModal tenant={selectedTenant} onClose={() => setModal(null)} onSubmit={recordPayment} />}
+      {assistantOpen && <AssistantModal tenants={tenants} orders={orders} metrics={metrics} availableBeds={availableBeds.length} onClose={() => setAssistantOpen(false)} onView={(next) => { setAssistantOpen(false); goTo(next); }} />}
       {toast && <div className="toast" role="status">✓ {toast}</div>}
     </div>
   );
+}
+
+function AssistantModal({ tenants, orders, metrics, availableBeds, onClose, onView }: { tenants: Tenant[]; orders: WorkOrder[]; metrics: ReturnType<typeof summaryShape>; availableBeds: number; onClose: () => void; onView: (view: View) => void }) {
+  const [prompt, setPrompt] = useState('');
+  const [answer, setAnswer] = useState('');
+  const pending = [...tenants].filter((tenant) => balanceFor(tenant) > 0).sort((a, b) => balanceFor(b) - balanceFor(a));
+  function ask(value: string) {
+    const question = value.toLowerCase(); setPrompt(value);
+    if (question.includes('due') || question.includes('follow')) setAnswer(`${pending.slice(0, 3).map((tenant) => `${tenant.name} (${money.format(balanceFor(tenant))})`).join(', ')} are your highest-priority payment follow-ups. Together they represent ${money.format(pending.slice(0, 3).reduce((sum, tenant) => sum + balanceFor(tenant), 0))}.`);
+    else if (question.includes('vacant') || question.includes('bed')) setAnswer(`${availableBeds} beds are currently ready to allot. Open Property to see their room and bed numbers.`);
+    else if (question.includes('maintenance') || question.includes('repair')) setAnswer(`${orders.filter((order) => order.status !== 'resolved').length} work orders are open. ${orders.filter((order) => order.priority === 'urgent' && order.status !== 'resolved').length} is urgent and should be reviewed today.`);
+    else setAnswer(`Villa 26 is ${Math.round(tenants.length / metrics.totalBeds * 100)}% occupied. You have collected ${money.format(metrics.collected)}, with ${money.format(metrics.pending)} still outstanding across ${pending.length} tenants.`);
+  }
+  function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (prompt.trim()) ask(prompt.trim()); }
+  return <div className="modal-layer assistant-layer" onMouseDown={onClose}><section className="assistant-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}><header><div className="assistant-brand"><span>✦</span><div><strong>Ask RentWise</strong><small>Answers from your live workspace</small></div></div><button onClick={onClose}>×</button></header><form onSubmit={submit}><input autoFocus value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Ask about rent, tenants, rooms or maintenance…" /><button type="submit">Ask →</button></form>{answer ? <div className="assistant-answer"><span>✦</span><div><p>{answer}</p><div><button onClick={() => onView('rent')}>Open rent</button><button onClick={() => onView('property')}>View property</button></div></div></div> : <div className="suggestion-list"><p>Try asking</p>{['Who has the highest dues?', 'How many beds are vacant?', 'What maintenance needs attention?', 'Give me a portfolio summary'].map((item) => <button key={item} onClick={() => ask(item)}><span>{item}</span><b>↗</b></button>)}</div>}<footer><span>Workspace intelligence</span><em>Uses current RentWise records</em></footer></section></div>;
 }
 
 function Overview({ tenants, orders, metrics, availableBeds, onView, onTenant, onPayment }: { tenants: Tenant[]; orders: WorkOrder[]; metrics: ReturnType<typeof summaryShape>; availableBeds: number; onView: (view: View) => void; onTenant: (id: number) => void; onPayment: (id: number) => void }) {
