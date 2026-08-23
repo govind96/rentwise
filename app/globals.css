@@ -118,7 +118,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 /* ---------- workspace ---------- */
 .workspace { margin-left: 264px; width: calc(100% - 264px); min-height: 100vh; padding: 40px clamp(24px, 4.3vw, 72px) 64px; max-width: 1740px; }
 
-.view-stage { animation: view-enter .45s cubic-bezier(.22, .8, .25, 1) both; }
+.view-stage { min-width: 0; animation: view-enter .45s cubic-bezier(.22, .8, .25, 1) both; }
 @keyframes view-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 .page-head { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-bottom: 26px; }
@@ -174,7 +174,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .prompt-bar button i { font-style: normal; }
 
 /* ---------- generic surfaces ---------- */
-.view-stack { display: grid; gap: 18px; }
+.view-stack { min-width: 0; display: grid; gap: 18px; }
+.stat-row, .intelligence-row, .overview-main, .overview-lower, .rent-layout,
+.stat-card, .surface, .trend-card, .ai-brief, .property-hero, .tenant-summary, .rent-hero { min-width: 0; }
 .stat-card, .surface, .trend-card, .ai-brief, .property-hero, .tenant-summary, .rent-hero, .maintenance-stats > article {
   background: var(--paper); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow-sm);
@@ -573,7 +575,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 /* ---------- mobile ---------- */
-.mobile-topbar, .mobile-nav { display: none; }
+.mobile-topbar, .mobile-nav, .mobile-property-switch { display: none; }
 
 /* ---------- boot screen ---------- */
 .boot { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 14px; text-align: center; }
@@ -859,7 +861,7 @@ a.main-button, a.quiet-button { text-decoration: none; display: inline-flex; ali
   .onboarding-actions .main-button { min-width: 0; flex: 1; }
   .side { display: none; }
   .workspace { margin: 0; width: 100%; padding: 0 14px 40px; }
-  .mobile-topbar { height: 62px; display: flex; align-items: center; gap: 9px; padding: 12px 14px 8px; }
+  .mobile-topbar { height: 62px; display: flex; align-items: center; gap: 9px; padding: 12px 0 8px; }
   .mobile-brand { border: 0; background: transparent; color: var(--ink); display: flex; align-items: center; gap: 7px; padding: 0; }
   .mobile-brand span { width: 30px; height: 30px; font-size: 14px; }
   .mobile-brand strong { font-size: 16px; color: var(--ink); font-weight: 800; }
@@ -867,7 +869,19 @@ a.main-button, a.quiet-button { text-decoration: none; display: inline-flex; ali
   .mobile-lookup span { font-size: 15px; }
   .mobile-lookup em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-create { width: 40px; height: 40px; border: 0; border-radius: 12px; background: linear-gradient(135deg, #6d4aff, #9b6bff); color: #fff; font-size: 19px; box-shadow: 0 6px 14px rgba(109, 74, 255, .35); }
-  .mobile-nav { display: flex; overflow-x: auto; gap: 6px; border-bottom: 1px solid var(--line); padding: 8px 14px 12px; margin-bottom: 20px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .mobile-property-switch { display: block; position: relative; margin: 2px 0 8px; }
+  .mobile-property-switch .property-select { min-height: 56px; padding: 8px 10px; color: var(--ink); background: rgba(255, 254, 251, .9); border-color: var(--line); box-shadow: var(--shadow-sm); }
+  .mobile-property-switch .property-select:hover { background: var(--paper); border-color: #cfc7dc; }
+  .mobile-property-switch .property-select small, .mobile-property-switch .property-select em { color: var(--muted); }
+  .mobile-property-switch .property-select strong { font-size: 14px; }
+  .mobile-property-switch .property-select > b { color: var(--ink-2); }
+  .mobile-property-switch .prop-menu { top: calc(100% + 7px); background: var(--paper); border-color: var(--line); box-shadow: var(--shadow-lg); }
+  .mobile-property-switch .prop-item { color: var(--ink); }
+  .mobile-property-switch .prop-item:hover, .mobile-property-switch .prop-item.active { background: var(--lav-soft); }
+  .mobile-property-switch .prop-item p small { color: var(--muted); }
+  .mobile-property-switch .prop-item.add > span:first-child { color: var(--lav); background: var(--lav-soft); }
+  .mobile-property-switch .prop-divider { background: var(--line); }
+  .mobile-nav { display: flex; overflow-x: auto; gap: 6px; border-bottom: 1px solid var(--line); padding: 8px 0 12px; margin-bottom: 20px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .mobile-nav::-webkit-scrollbar { display: none; }
   .mobile-nav button { flex: 0 0 auto; border: 0; background: transparent; color: var(--muted); border-radius: 12px; padding: 10px 14px; white-space: nowrap; font-size: 14px; font-weight: 750; }
   .mobile-nav button.active { background: var(--lav-soft); color: var(--lav); }
@@ -882,7 +896,7 @@ a.main-button, a.quiet-button { text-decoration: none; display: inline-flex; ali
   .prompt-bar input { font-size: 14px; }
   .prompt-bar button { min-height: 36px; padding: 0 13px; }
   .stat-row { grid-template-columns: 1fr; gap: 10px; }
-  .stat-card { min-height: 0; padding: 17px; }
+  .stat-card { width: 100%; min-height: 0; padding: 17px; overflow: hidden; }
   .stat-card > strong { font-size: 24px; }
   .ai-brief { padding: 18px; }
   .brief-copy h2 { font-size: 18px; }
@@ -936,6 +950,12 @@ a.main-button, a.quiet-button { text-decoration: none; display: inline-flex; ali
   .assistant-modal form { padding: 14px 14px 8px; }
   .suggestion-list, .assistant-answer { padding: 6px 14px 16px; }
   .assistant-modal footer { padding: 11px 14px; }
+}
+
+@media (max-width: 360px) {
+  .mini-rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mobile-brand strong { font-size: 15px; }
+  .mobile-lookup { padding: 0 9px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

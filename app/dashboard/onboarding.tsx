@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 export type PropertyDraft = {
   name: string;
@@ -28,6 +28,9 @@ const steps = [
 ];
 
 export default function PropertyOnboarding({ existingNames, onClose, onCreated }: { existingNames: string[]; onClose: () => void; onCreated: (property: PropertyDraft) => void }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState<PropertyDraft>({
@@ -38,10 +41,43 @@ export default function PropertyOnboarding({ existingNames, onClose, onCreated }
   const totalBeds = draft.rooms * draft.bedsPerRoom;
   const roomPreview = useMemo(() => Array.from({ length: Math.min(draft.rooms, 6) }, (_, index) => draft.startingRoom + index), [draft.rooms, draft.startingRoom]);
 
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    const frame = window.requestAnimationFrame(() => {
+      const nextFocus = dialogRef.current?.querySelector<HTMLElement>('.onboarding-step input, .onboarding-step select, .onboarding-step h1');
+      nextFocus?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [step]);
+
   useEffect(() => {
     const previous = document.body.style.overflow;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
+    const dialog = dialogRef.current;
+    const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) return;
+      const focusable = [...dialog.querySelectorAll<HTMLElement>(focusableSelector)].filter((item) => item.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener('keydown', onKeyDown);
+      previouslyFocused?.focus();
+    };
   }, []);
 
   function update<K extends keyof PropertyDraft>(key: K, value: PropertyDraft[K]) {
@@ -66,8 +102,8 @@ export default function PropertyOnboarding({ existingNames, onClose, onCreated }
   }
 
   return (
-    <div className="modal-layer onboarding-layer" onMouseDown={onClose}>
-      <section className="property-onboarding" role="dialog" aria-modal="true" aria-label="Add a new property" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="modal-layer onboarding-layer" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section ref={dialogRef} className="property-onboarding" role="dialog" aria-modal="true" aria-labelledby="property-onboarding-title">
         <aside className="onboarding-rail">
           <button className="onboarding-brand" type="button" onClick={onClose}><span>R</span><strong>RentWise</strong></button>
           <div>
@@ -81,12 +117,12 @@ export default function PropertyOnboarding({ existingNames, onClose, onCreated }
           <p className="onboarding-save">No account needed · Saved in this browser</p>
         </aside>
 
-        <div className="onboarding-main">
+        <div ref={mainRef} className="onboarding-main">
           <button className="onboarding-close" type="button" aria-label="Close property setup" onClick={onClose}>×</button>
           <div className="mobile-step"><span>Step {step + 1} of {steps.length}</span><strong>{steps[step].label}</strong><i><b style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></i></div>
           <form onSubmit={advance}>
             {step === 0 && <div className="onboarding-step">
-              <header><p className="overline">THE BASICS</p><h1>Tell us about the property.</h1><span>This is how it will appear across your dashboard, receipts and tenant communication.</span></header>
+              <header><p className="overline">THE BASICS</p><h1 id="property-onboarding-title" tabIndex={-1}>Tell us about the property.</h1><span>This is how it will appear across your dashboard, receipts and tenant communication.</span></header>
               <label>Property name<input autoFocus required value={draft.name} onChange={(event) => update('name', event.target.value)} placeholder="e.g. Sunshine Ladies PG" /></label>
               <div className="form-row"><label>Property type<select value={draft.type} onChange={(event) => update('type', event.target.value as PropertyDraft['type'])}><option>Paying guest</option><option>Hostel</option><option>Co-living</option><option>Independent rooms</option></select></label><label>Occupancy type<select value={draft.audience} onChange={(event) => update('audience', event.target.value as PropertyDraft['audience'])}><option>Women</option><option>Men</option><option>Co-living</option></select></label></div>
               <label>Street address<input required value={draft.address} onChange={(event) => update('address', event.target.value)} placeholder="Building, street and locality" /></label>
@@ -94,14 +130,14 @@ export default function PropertyOnboarding({ existingNames, onClose, onCreated }
             </div>}
 
             {step === 1 && <div className="onboarding-step">
-              <header><p className="overline">ROOM PLAN</p><h1>Create the room and bed inventory.</h1><span>Start with a standard layout. You can allot tenants and adjust individual rents afterward.</span></header>
+              <header><p className="overline">ROOM PLAN</p><h1 id="property-onboarding-title" tabIndex={-1}>Create the room and bed inventory.</h1><span>Start with a standard layout. You can allot tenants and adjust individual rents afterward.</span></header>
               <div className="form-row three"><label>Number of rooms<input type="number" min="1" max="80" required value={draft.rooms} onChange={(event) => update('rooms', Math.max(1, Number(event.target.value)))} /></label><label>Beds per room<input type="number" min="1" max="8" required value={draft.bedsPerRoom} onChange={(event) => update('bedsPerRoom', Math.max(1, Number(event.target.value)))} /></label><label>First room number<input type="number" min="1" max="999" required value={draft.startingRoom} onChange={(event) => update('startingRoom', Math.max(1, Number(event.target.value)))} /></label></div>
               <div className="layout-preview"><div><span>Floor plan preview</span><strong>{draft.rooms} rooms · {totalBeds} beds</strong></div><div className="preview-rooms">{roomPreview.map((room) => <article key={room}><span>Room {room}</span><p>{Array.from({ length: draft.bedsPerRoom }, (_, index) => <i key={index}>{String.fromCharCode(65 + index)}</i>)}</p></article>)}{draft.rooms > 6 && <article className="more"><strong>+{draft.rooms - 6}</strong><span>more rooms</span></article>}</div></div>
               <fieldset><legend>Included amenities <small>Optional</small></legend><div className="amenity-grid">{amenities.map((item) => <button key={item} type="button" className={draft.amenities.includes(item) ? 'selected' : ''} onClick={() => toggleAmenity(item)}><i>{draft.amenities.includes(item) ? '✓' : '+'}</i>{item}</button>)}</div></fieldset>
             </div>}
 
             {step === 2 && <div className="onboarding-step">
-              <header><p className="overline">COLLECTION RULES</p><h1>Set sensible rent defaults.</h1><span>These become the starting values for new allotments and can still be changed tenant by tenant.</span></header>
+              <header><p className="overline">COLLECTION RULES</p><h1 id="property-onboarding-title" tabIndex={-1}>Set sensible rent defaults.</h1><span>These become the starting values for new allotments and can still be changed tenant by tenant.</span></header>
               <div className="form-row"><label>Monthly rent per bed (₹)<input autoFocus type="number" min="1" required value={draft.rent} onChange={(event) => update('rent', Math.max(0, Number(event.target.value)))} /></label><label>Default security deposit (₹)<input type="number" min="0" required value={draft.security} onChange={(event) => update('security', Math.max(0, Number(event.target.value)))} /></label></div>
               <div className="form-row three"><label>Rent due day<input type="number" min="1" max="28" required value={draft.rentDueDay} onChange={(event) => update('rentDueDay', Math.min(28, Math.max(1, Number(event.target.value))))} /></label><label>Grace period<input type="number" min="0" max="15" required value={draft.graceDays} onChange={(event) => update('graceDays', Math.min(15, Math.max(0, Number(event.target.value))))} /></label><label>Late fee (₹)<input type="number" min="0" required value={draft.lateFee} onChange={(event) => update('lateFee', Math.max(0, Number(event.target.value)))} /></label></div>
               <div className="collection-preview"><span>Monthly collection potential</span><strong>₹{(draft.rent * totalBeds).toLocaleString('en-IN')}</strong><p>If all {totalBeds} beds are occupied · rent due on day {draft.rentDueDay}{draft.graceDays ? ` · ${draft.graceDays}-day grace period` : ''}</p></div>
@@ -109,7 +145,7 @@ export default function PropertyOnboarding({ existingNames, onClose, onCreated }
             </div>}
 
             {step === 3 && <div className="onboarding-step review-step">
-              <header><p className="overline">READY TO CREATE</p><h1>Your property workspace is ready.</h1><span>Review the defaults below. You can edit the property and allot the first tenant immediately after creating it.</span></header>
+              <header><p className="overline">READY TO CREATE</p><h1 id="property-onboarding-title" tabIndex={-1}>Your property workspace is ready.</h1><span>Review the defaults below. You can edit the property and allot the first tenant immediately after creating it.</span></header>
               <div className="review-property"><span>{draft.name.slice(0, 2).toUpperCase() || 'PG'}</span><div><strong>{draft.name || 'Your property'}</strong><p>{draft.address}, {draft.city}</p><small>{draft.audience} · {draft.type}</small></div></div>
               <div className="review-grid"><article><span>Inventory</span><strong>{draft.rooms} rooms</strong><small>{totalBeds} rentable beds</small></article><article><span>Rent default</span><strong>₹{draft.rent.toLocaleString('en-IN')}</strong><small>per bed monthly</small></article><article><span>Deposit</span><strong>₹{draft.security.toLocaleString('en-IN')}</strong><small>default per tenant</small></article><article><span>Collection</span><strong>Due day {draft.rentDueDay}</strong><small>{draft.graceDays}-day grace · ₹{draft.lateFee.toLocaleString('en-IN')} late fee</small></article></div>
               <div className="review-amenities"><span>Amenities</span><p>{draft.amenities.length ? draft.amenities.map((item) => <i key={item}>{item}</i>) : <em>None selected</em>}</p></div>
@@ -117,7 +153,7 @@ export default function PropertyOnboarding({ existingNames, onClose, onCreated }
             </div>}
 
             {error && <p className="auth-error" role="alert">{error}</p>}
-            <footer className="onboarding-actions"><button type="button" className="quiet-button" onClick={() => step ? setStep((current) => current - 1) : onClose()}>{step ? '← Back' : 'Cancel'}</button><button type="submit" className="main-button">{step === steps.length - 1 ? `Create ${draft.name || 'property'} →` : 'Continue →'}</button></footer>
+            <footer className="onboarding-actions"><button type="button" className="quiet-button" onClick={() => step ? setStep((current) => current - 1) : onClose()}>{step ? '← Back' : 'Cancel'}</button><button type="submit" className="main-button">{step === steps.length - 1 ? 'Create property →' : 'Continue →'}</button></footer>
           </form>
         </div>
       </section>
