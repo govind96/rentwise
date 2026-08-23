@@ -1,9 +1,10 @@
 import Link from 'next/link';
+import BrandMark from '../components/BrandMark';
 
 export default function Login() {
   return (
     <div className="auth-wrap">
-      <Link className="land-brand auth-brand" href="/"><i>R</i><strong>RentWise</strong><em>OS</em></Link>
+      <Link className="land-brand auth-brand" href="/"><BrandMark /><strong>RentWise</strong><em>OS</em></Link>
       <section className="auth-card">
         <p className="overline">No account needed</p>
         <h1>Owner accounts are coming later</h1>

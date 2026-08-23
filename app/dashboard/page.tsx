@@ -1,7 +1,8 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import PropertyOnboarding, { PropertyDraft } from './onboarding';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import BrandMark from '../components/BrandMark';
+import PropertyOnboarding, { PropertyDraft, roomOccupancies } from './onboarding';
 
 type View = 'overview' | 'property' | 'tenants' | 'rent' | 'maintenance' | 'documents';
 type Tenant = {
@@ -17,6 +18,9 @@ type PropertyInfo = {
   id: number; name: string; address: string; city?: string;
   type?: PropertyDraft['type']; audience?: PropertyDraft['audience']; amenities?: string[];
   defaultRent?: number; defaultSecurity?: number; rentDueDay?: number; graceDays?: number; lateFee?: number;
+  floors?: number; mealPlan?: PropertyDraft['mealPlan']; electricityPlan?: PropertyDraft['electricityPlan'];
+  climatePlan?: PropertyDraft['climatePlan']; bathroomPlan?: PropertyDraft['bathroomPlan']; noticeDays?: number;
+  agreementRequired?: boolean; verificationRequired?: boolean;
 };
 type WorkOrder = {
   id: number; title: string; room: string; tenant: string; category: string;
@@ -64,7 +68,9 @@ const seededInventory: RoomInventory = [
 const seededProperty: PortfolioProperty = {
   id: 1, name: 'Saffron Stay PG', address: 'Kalyan Nagar', city: 'Bengaluru', type: 'Paying guest', audience: 'Women',
   amenities: ['Wi-Fi', 'Meals', 'Laundry', 'Housekeeping', 'CCTV'], defaultRent: 3000, defaultSecurity: 3000,
-  rentDueDay: 5, graceDays: 3, lateFee: 250, inventory: seededInventory, tenants: seededTenants, orders: seededOrders,
+  rentDueDay: 5, graceDays: 3, lateFee: 250, floors: 3, mealPlan: 'Included', electricityPlan: 'Metered separately',
+  climatePlan: 'Mixed AC & non-AC', bathroomPlan: 'Mixed', noticeDays: 30, agreementRequired: true, verificationRequired: true,
+  inventory: seededInventory, tenants: seededTenants, orders: seededOrders,
 };
 
 const PORTFOLIO_STORAGE_KEY = 'rentwise-portfolio-v1';
@@ -73,7 +79,9 @@ function isPortfolioProperty(value: unknown): value is PortfolioProperty {
   if (!value || typeof value !== 'object') return false;
   const item = value as Partial<PortfolioProperty>;
   return typeof item.id === 'number' && typeof item.name === 'string' && typeof item.address === 'string'
-    && Array.isArray(item.inventory) && Array.isArray(item.tenants) && Array.isArray(item.orders);
+    && Array.isArray(item.inventory) && item.inventory.every((room) => Array.isArray(room) && typeof room[0] === 'string' && Array.isArray(room[1]) && room[1].every((bed) => typeof bed === 'string'))
+    && Array.isArray(item.tenants) && item.tenants.every((tenant) => tenant && typeof tenant === 'object' && typeof tenant.id === 'number' && typeof tenant.name === 'string' && typeof tenant.room === 'string' && typeof tenant.bed === 'string')
+    && Array.isArray(item.orders) && item.orders.every((order) => order && typeof order === 'object' && typeof order.id === 'number' && typeof order.title === 'string');
 }
 
 function propertyInitials(name: string) {
@@ -182,6 +190,7 @@ function Workspace() {
   const [demoInventory, setDemoInventory] = useState<RoomInventory>(seededInventory);
   const [realHistory, setRealHistory] = useState<Record<number, Receipt[]>>({});
   const [exampleIndex, setExampleIndex] = useState(0);
+  const backupInputRef = useRef<HTMLInputElement>(null);
 
   const workspaceOverlayOpen = modal !== null || drawerId !== null || assistantOpen || propEditOpen;
 
@@ -313,21 +322,56 @@ function Workspace() {
   }
 
   function openPropertyOnboarding() { setSwitcherOpen(false); setPropertyOnboardingOpen(true); }
+  function downloadPortfolioBackup() {
+    const latestPortfolio = portfolio.map((item) => item.id === activePropertyId ? { ...item, tenants, orders, inventory: demoInventory } : item);
+    const payload = JSON.stringify({ format: 'rentwise-portfolio', version: 1, exportedAt: new Date().toISOString(), activePropertyId, portfolio: latestPortfolio }, null, 2);
+    const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url; link.download = `rentwise-backup-${todayISO()}.json`; document.body.appendChild(link); link.click(); link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setSwitcherOpen(false); showToast('Portfolio backup downloaded');
+  }
+  async function restorePortfolioBackup(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      if (file.size > 5_000_000) throw new Error('Backup is too large');
+      const data = JSON.parse(await file.text()) as { format?: string; version?: number; activePropertyId?: number; portfolio?: unknown[] };
+      if (data.format !== 'rentwise-portfolio' || data.version !== 1 || !Array.isArray(data.portfolio)) throw new Error('Unknown backup format');
+      const restored = data.portfolio.filter(isPortfolioProperty);
+      if (!restored.length || restored.length !== data.portfolio.length) throw new Error('Incomplete backup');
+      const active = restored.find((item) => item.id === data.activePropertyId) ?? restored[0];
+      setPortfolio(restored); setProperties(restored); setProperty(active); setActivePropertyId(active.id);
+      setTenants(active.tenants); setOrders(active.orders); setDemoInventory(active.inventory); setDraftRent(active.defaultRent ?? 3000);
+      setSwitcherOpen(false); setView('overview');
+      window.localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify({ portfolio: restored, activePropertyId: active.id }));
+      showToast(`${restored.length} ${restored.length === 1 ? 'property' : 'properties'} restored from backup`);
+    } catch {
+      showToast('That file is not a valid RentWise backup');
+    } finally {
+      input.value = '';
+    }
+  }
   function createProperty(draft: PropertyDraft) {
     const id = Math.max(...portfolio.map((item) => item.id), 0) + 1;
-    const nextInventory: RoomInventory = Array.from({ length: draft.rooms }, (_, roomIndex) => [String(draft.startingRoom + roomIndex), Array.from({ length: draft.bedsPerRoom }, (_, bedIndex) => String.fromCharCode(65 + bedIndex))]);
+    const plannedRooms = roomOccupancies(draft);
+    const nextInventory: RoomInventory = plannedRooms.map((bedCount, roomIndex) => [String(draft.startingRoom + roomIndex), Array.from({ length: bedCount }, (_, bedIndex) => String.fromCharCode(65 + bedIndex))]);
     const currentPortfolio = portfolio.map((item) => item.id === activePropertyId ? { ...item, tenants, orders, inventory: demoInventory } : item);
     const created: PortfolioProperty = {
       id, name: draft.name, address: draft.address, city: draft.city, type: draft.type, audience: draft.audience,
       amenities: draft.amenities, defaultRent: draft.rent, defaultSecurity: draft.security, rentDueDay: draft.rentDueDay,
-      graceDays: draft.graceDays, lateFee: draft.lateFee, inventory: nextInventory, tenants: [], orders: [],
+      graceDays: draft.graceDays, lateFee: draft.lateFee, floors: draft.floors, mealPlan: draft.mealPlan,
+      electricityPlan: draft.electricityPlan, climatePlan: draft.climatePlan, bathroomPlan: draft.bathroomPlan,
+      noticeDays: draft.noticeDays, agreementRequired: draft.agreementRequired, verificationRequired: draft.verificationRequired,
+      inventory: nextInventory, tenants: [], orders: [],
     };
     const nextPortfolio = [...currentPortfolio, created];
     setPortfolio(nextPortfolio); setProperties(nextPortfolio); setProperty(created); setActivePropertyId(id);
     setTenants([]); setOrders([]); setDemoInventory(nextInventory); setDraftRent(draft.rent);
     setPropertyOnboardingOpen(false); setView('property');
     try { window.localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify({ portfolio: nextPortfolio, activePropertyId: id })); } catch { /* UI remains usable for this session */ }
-    showToast(`${draft.name} is ready — ${draft.rooms * draft.bedsPerRoom} beds created`);
+    showToast(`${draft.name} is ready — ${plannedRooms.length} rooms and ${plannedRooms.reduce((sum, beds) => sum + beds, 0)} beds created`);
   }
   function addTenant(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -422,8 +466,9 @@ function Workspace() {
 
   return (
     <div className="shell">
+      <input ref={backupInputRef} className="file-input-hidden" type="file" accept="application/json,.json" aria-label="Restore portfolio backup" onChange={(event) => void restorePortfolioBackup(event)} />
       <aside className="side">
-        <button className="logo" onClick={() => goTo('overview')}><span>R</span><strong>RentWise</strong><em>OS</em></button>
+        <button className="logo" onClick={() => goTo('overview')}><BrandMark /><strong>RentWise</strong><em>OS</em></button>
         <div className="prop-switch">
           <button className="property-select" aria-expanded={switcherOpen} onClick={() => properties.length > 0 ? setSwitcherOpen((open) => !open) : openPropertyOnboarding()}><span className="property-thumb">{propertyInitials(property?.name ?? 'Saffron Stay PG')}</span><span><small>{properties.length > 1 ? `${properties.length} PROPERTIES` : 'YOUR PROPERTY'}</small><strong>{property?.name ?? 'Saffron Stay PG'}</strong><em>{property ? `${property.address}${property.city ? `, ${property.city}` : ''}` : 'Kalyan Nagar, Bengaluru'}</em></span><b>⌄</b></button>
           {switcherOpen && <>
@@ -432,6 +477,8 @@ function Workspace() {
               {properties.map((item) => <button key={item.id} role="menuitem" className={item.id === activePropertyId ? 'prop-item active' : 'prop-item'} onClick={() => switchProperty(item.id)}><span>{propertyInitials(item.name)}</span><p><strong>{item.name}</strong><small>{item.address || 'No address yet'}</small></p>{item.id === activePropertyId && <b>✓</b>}</button>)}
               <div className="prop-divider" />
               <button role="menuitem" className="prop-item add" onClick={openPropertyOnboarding}><span>＋</span><p><strong>Add another property</strong><small>Build rooms, beds and rent defaults</small></p></button>
+              <button role="menuitem" className="prop-item backup" onClick={downloadPortfolioBackup}><span>⇩</span><p><strong>Download portfolio backup</strong><small>Keep a portable copy of this browser’s data</small></p></button>
+              <button role="menuitem" className="prop-item backup" onClick={() => { setSwitcherOpen(false); backupInputRef.current?.click(); }}><span>↥</span><p><strong>Restore portfolio backup</strong><small>Open a RentWise JSON backup on this device</small></p></button>
             </div>
           </>}
         </div>
@@ -445,10 +492,10 @@ function Workspace() {
       </aside>
 
       <div className="workspace">
-        <div className="mobile-topbar"><button className="mobile-brand" onClick={() => goTo('overview')}><span>R</span><strong>RentWise</strong></button><button className="mobile-lookup" onClick={() => { setFilter('all'); goTo('tenants'); }}><span>⌕</span><em>Search tenant or room</em></button><button className="mobile-create" aria-label="Create new allotment" onClick={() => setModal('tenant')}>＋</button></div>
+        <div className="mobile-topbar"><button className="mobile-brand" onClick={() => goTo('overview')}><BrandMark /><strong>RentWise</strong></button><button className="mobile-lookup" onClick={() => { setFilter('all'); goTo('tenants'); }}><span>⌕</span><em>Search tenant or room</em></button><button className="mobile-create" aria-label="Create new allotment" onClick={() => setModal('tenant')}>＋</button></div>
         <div className="mobile-property-switch">
           <button className="property-select" aria-expanded={switcherOpen} onClick={() => setSwitcherOpen((open) => !open)}><span className="property-thumb">{propertyInitials(property?.name ?? 'Saffron Stay PG')}</span><span><small>ACTIVE PROPERTY</small><strong>{property?.name ?? 'Saffron Stay PG'}</strong><em>{properties.length} {properties.length === 1 ? 'property' : 'properties'} in portfolio</em></span><b>⌄</b></button>
-          {switcherOpen && <><button className="prop-backdrop" aria-label="Close property menu" onClick={() => setSwitcherOpen(false)} /><div className="prop-menu" role="menu">{properties.map((item) => <button key={item.id} role="menuitem" className={item.id === activePropertyId ? 'prop-item active' : 'prop-item'} onClick={() => switchProperty(item.id)}><span>{propertyInitials(item.name)}</span><p><strong>{item.name}</strong><small>{item.address || 'No address yet'}</small></p>{item.id === activePropertyId && <b>✓</b>}</button>)}<div className="prop-divider" /><button role="menuitem" className="prop-item add" onClick={openPropertyOnboarding}><span>＋</span><p><strong>Add another property</strong><small>Build rooms, beds and rent defaults</small></p></button></div></>}
+          {switcherOpen && <><button className="prop-backdrop" aria-label="Close property menu" onClick={() => setSwitcherOpen(false)} /><div className="prop-menu" role="menu">{properties.map((item) => <button key={item.id} role="menuitem" className={item.id === activePropertyId ? 'prop-item active' : 'prop-item'} onClick={() => switchProperty(item.id)}><span>{propertyInitials(item.name)}</span><p><strong>{item.name}</strong><small>{item.address || 'No address yet'}</small></p>{item.id === activePropertyId && <b>✓</b>}</button>)}<div className="prop-divider" /><button role="menuitem" className="prop-item add" onClick={openPropertyOnboarding}><span>＋</span><p><strong>Add another property</strong><small>Build rooms, beds and rent defaults</small></p></button><button role="menuitem" className="prop-item backup" onClick={downloadPortfolioBackup}><span>⇩</span><p><strong>Download portfolio backup</strong><small>Keep a portable copy of this browser’s data</small></p></button><button role="menuitem" className="prop-item backup" onClick={() => { setSwitcherOpen(false); backupInputRef.current?.click(); }}><span>↥</span><p><strong>Restore portfolio backup</strong><small>Open a RentWise JSON backup on this device</small></p></button></div></>}
         </div>
         <div className="mobile-nav">{(['overview', 'property', 'tenants', 'rent', 'documents', 'maintenance'] as View[]).map((item) => <button key={item} className={view === item ? 'active' : ''} onClick={() => goTo(item)}>{({ overview: 'Today', property: 'Property', tenants: 'Tenants', rent: 'Rent', documents: 'Documents', maintenance: 'Repairs' } as Record<View, string>)[item]}</button>)}</div>
         <main className="view-stage" key={view}>
@@ -572,8 +619,8 @@ function PropertyEditModal({ property, onClose, onSave }: { property: PropertyIn
 function PropertyView({ property, tenants, inventory, availableCount, onTenant, onAdd, onEdit, onNewProperty }: { property: PropertyInfo; tenants: Tenant[]; inventory: RoomInventory; availableCount: number; onTenant: (id: number) => void; onAdd: () => void; onEdit: () => void; onNewProperty: () => void }) {
   const totalBeds = inventory.reduce((sum, [, beds]) => sum + beds.length, 0);
   return <div className="view-stack"><section className="property-hero"><div><span className="property-badge">{propertyInitials(property.name)}</span><div><p className="overline">YOUR PROPERTY</p><h2>{property.name}</h2><p>{property.address}{property.city ? `, ${property.city}` : ''} · {property.audience ?? 'Co-living'} {property.type?.toLowerCase() ?? 'property'}</p></div></div><div className="property-facts"><div><span>{inventory.length}</span><small>Rooms</small></div><div><span>{totalBeds}</span><small>Beds</small></div><div><span>{tenants.length}</span><small>Residents</small></div><div><span>{totalBeds ? Math.round(tenants.length / totalBeds * 100) : 0}%</span><small>Occupied</small></div></div><div className="hero-actions"><button className="quiet-button" onClick={onEdit}>Edit</button><button className="quiet-button add-property-button" onClick={onNewProperty}>＋ New property</button><button className="main-button" onClick={onAdd}>＋ Allot bed</button></div></section>
-    {property.amenities?.length ? <section className="property-settings-strip"><div><span>Included amenities</span><p>{property.amenities.map((item) => <i key={item}>{item}</i>)}</p></div><div><span>Collection defaults</span><strong>Due day {property.rentDueDay ?? 5} · {property.graceDays ?? 3}-day grace · {money.format(property.lateFee ?? 0)} late fee</strong></div></section> : null}
-    <section className="surface"><div className="surface-head room-heading"><div><p className="overline">FLOOR PLAN</p><h2>Room inventory</h2></div><div className="room-legend"><span><i className="legend-dot occupied" />Occupied</span><span><i className="legend-dot" />Vacant</span><span className="legend-count">{availableCount} ready to allot</span></div></div><div className="room-cards">{inventory.map(([room, beds]) => { const roomTenants = tenants.filter((tenant) => tenant.room === room); const monthly = roomTenants[0]?.rent ?? property.defaultRent ?? 3000; return <article className="room-detail" key={room}><div className="room-title"><span>ROOM</span><strong>{room}</strong><em>{roomTenants.length === beds.length ? 'Full' : `${beds.length - roomTenants.length} open`}</em></div><div className="bed-list">{beds.map((bed) => { const tenant = roomTenants.find((item) => item.bed === bed); return <button key={bed} className={tenant ? 'occupied' : ''} onClick={() => tenant ? onTenant(tenant.id) : onAdd()}><i>{bed}</i><span>{tenant ? tenant.name.split(' ')[0] : 'Vacant'}</span><b>{tenant ? 'View' : 'Allot'}</b></button>; })}</div><footer><span>Monthly rent</span><strong>{money.format(roomTenants[0]?.rent ?? monthly)} <small>/ bed</small></strong></footer></article>; })}</div></section></div>;
+    <section className="property-settings-strip"><div><span>Included amenities</span><p>{property.amenities?.length ? property.amenities.map((item) => <i key={item}>{item}</i>) : <i>Not configured</i>}</p></div><div><span>Collection defaults</span><strong>Due day {property.rentDueDay ?? 5} · {property.graceDays ?? 3}-day grace · {money.format(property.lateFee ?? 0)} late fee</strong></div><div><span>Operating profile</span><strong>{property.mealPlan ?? 'Meals not configured'} · {property.electricityPlan ?? 'Electricity not configured'} · {property.noticeDays ?? 30}-day notice</strong><p className="policy-mini"><i>{property.agreementRequired === false ? 'Agreement optional' : 'Agreement tracked'}</i><i>{property.verificationRequired === false ? 'Verification optional' : 'Verification tracked'}</i></p></div></section>
+    <section className="surface"><div className="surface-head room-heading"><div><p className="overline">FLOOR PLAN · {property.floors ?? 1} {property.floors === 1 ? 'FLOOR' : 'FLOORS'}</p><h2>Room inventory</h2></div><div className="room-legend"><span><i className="legend-dot occupied" />Occupied</span><span><i className="legend-dot" />Vacant</span><span className="legend-count">{availableCount} ready to allot</span></div></div><div className="room-cards">{inventory.map(([room, beds]) => { const roomTenants = tenants.filter((tenant) => tenant.room === room); const monthly = roomTenants[0]?.rent ?? property.defaultRent ?? 3000; return <article className="room-detail" key={room}><div className="room-title"><span>ROOM</span><strong>{room}</strong><em>{roomTenants.length === beds.length ? 'Full' : `${beds.length - roomTenants.length} open`}</em></div><div className="bed-list">{beds.map((bed) => { const tenant = roomTenants.find((item) => item.bed === bed); return <button key={bed} className={tenant ? 'occupied' : ''} onClick={() => tenant ? onTenant(tenant.id) : onAdd()}><i>{bed}</i><span>{tenant ? tenant.name.split(' ')[0] : 'Vacant'}</span><b>{tenant ? 'View' : 'Allot'}</b></button>; })}</div><footer><span>{beds.length === 1 ? 'Single room' : `${beds.length} sharing`}</span><strong>{money.format(roomTenants[0]?.rent ?? monthly)} <small>/ bed</small></strong></footer></article>; })}</div></section></div>;
 }
 
 function TenantsView({ tenants, totals, query, filter, onQuery, onFilter, onTenant, onPayment }: { tenants: Tenant[]; totals: { active: number; verified: number; clear: number; rooms: number }; query: string; filter: 'all' | 'pending' | 'paid'; onQuery: (value: string) => void; onFilter: (value: 'all' | 'pending' | 'paid') => void; onTenant: (id: number) => void; onPayment: (id: number) => void }) {
