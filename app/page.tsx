@@ -48,7 +48,7 @@ export default function Landing() {
         </nav>
         <div className="land-nav-actions">
           <ThemeToggle compact />
-          <a className="main-button" href="/dashboard">Open live demo</a>
+          <a className="main-button" href="/dashboard"><span className="nav-label-full">Open live demo</span><span className="nav-label-short">Open demo</span></a>
         </div>
       </header>
 
