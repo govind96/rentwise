@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import BrandMark from '../components/BrandMark';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function Login() {
   return (
     <div className="auth-wrap">
+      <div className="auth-theme"><ThemeToggle compact /></div>
       <Link className="land-brand auth-brand" href="/"><BrandMark /><strong>RentWise</strong><em>OS</em></Link>
       <section className="auth-card">
         <p className="overline">No account needed</p>

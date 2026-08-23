@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import BrandMark from './components/BrandMark';
+import ThemeToggle from './components/ThemeToggle';
 
 const promptExamples = [
   'Who needs a rent reminder?',
@@ -10,26 +11,23 @@ const promptExamples = [
   'How much rent is still pending?',
 ];
 
-const features = [
-  { icon: '✦', title: 'A copilot that knows your building', copy: 'Ask “who owes rent?” and get names, amounts and one-tap receipts — answered from your live records, not guesses.', wide: true },
-  { icon: '₹', title: 'Collections on rails', copy: 'Prorated first-month rent, deposits and split payments — the remaining balance is always exact.' },
-  { icon: '▦', title: 'Every bed, at a glance', copy: 'Occupancy across rooms and beds, with allotment in seconds.' },
-  { icon: '◇', title: 'Maintenance desk', copy: 'From a morning complaint to a closed ticket, with urgent items flagged first.' },
-  { icon: '⌑', title: 'Documents & KYC', copy: 'Identity proofs and agreements tracked gently, without chasing WhatsApp threads.' },
-  { icon: '☏', title: 'Built for your phone', copy: 'The full workspace fits the device already in your pocket.' },
-];
-
-const steps = [
-  { n: '01', title: 'Shape your property', copy: 'Choose a uniform layout or mix single, double, triple, four and six-sharing rooms floor by floor.' },
-  { n: '02', title: 'Move tenants in', copy: 'Allot a bed and the copilot prorates the first month and opens the dues automatically.' },
-  { n: '03', title: 'Ask, and it’s done', copy: 'Reminders, receipts and follow-ups become a conversation instead of a spreadsheet.' },
+const essentials = [
+  { icon: '₹', title: 'Rent without guesswork', copy: 'Dues, deposits, prorating, split payments and receipts in one clean ledger.' },
+  { icon: '▦', title: 'One live bed map', copy: 'See every room, resident and vacancy—then allot a bed in seconds.' },
+  { icon: '✦', title: 'The next task, surfaced', copy: 'RentWise brings pending rent, repairs and documents to your attention.' },
 ];
 
 const propertyModels = [
-  { code: 'LP', title: 'Ladies PG', layout: 'Double + triple sharing', copy: 'Meals, guardian contacts and a clear KYC checklist.', tone: 'lilac' },
-  { code: 'SH', title: 'Student hostel', layout: 'Four + six sharing', copy: 'Mess rules, floor-level occupancy and bed-led billing.', tone: 'mint' },
-  { code: 'CL', title: 'Co-living', layout: 'Single + double', copy: 'Bundled utilities, premium amenities and flexible notice.', tone: 'peach' },
-  { code: 'IR', title: 'Independent rooms', layout: 'Private inventory', copy: 'Metered electricity, deposits and room-level ledgers.', tone: 'sand' },
+  { code: 'PG', title: 'Classic PG', layout: 'Single to triple sharing', copy: 'Meals, utilities and resident verification.', tone: 'lilac' },
+  { code: 'HS', title: 'Student hostel', layout: 'Four and six sharing', copy: 'Dense bed inventory with mess operations.', tone: 'mint' },
+  { code: 'CL', title: 'Co-living', layout: 'Private and shared rooms', copy: 'Bundled services with flexible policies.', tone: 'peach' },
+];
+
+const roomMix = [
+  { label: 'Single', detail: '2 rooms · 2 beds', status: 'Full' },
+  { label: 'Double', detail: '5 rooms · 10 beds', status: '2 open' },
+  { label: 'Triple', detail: '2 rooms · 6 beds', status: '1 open' },
+  { label: 'Dorm 6', detail: '1 room · 6 beds', status: '3 open' },
 ];
 
 export default function Landing() {
@@ -46,84 +44,89 @@ export default function Landing() {
         <span className="land-brand"><BrandMark /><strong>RentWise</strong><em>OS</em></span>
         <nav>
           <a href="#features">Product</a>
-          <a href="#properties">Properties</a>
-          <a href="#how">How it works</a>
+          <a href="#properties">Property types</a>
         </nav>
         <div className="land-nav-actions">
-          <a className="quiet-button" href="#how">See how it works</a>
+          <ThemeToggle compact />
           <a className="main-button" href="/dashboard">Open live demo</a>
         </div>
       </header>
 
       <section className="land-hero">
-        <p className="overline">RentWise OS · AI-native property operations</p>
-        <h1>Your rooms, rent and repairs, <em>on autopilot</em>.</h1>
-        <p className="land-sub">RentWise watches collections, occupancy and maintenance for Indian PGs and hostels — and shows you exactly what needs your attention today. Start with a live workspace, no signup required.</p>
-        <a className="land-prompt" href="/dashboard" aria-label="Try the live demo">
+        <p className="overline">RentWise OS · Built for Indian PG owners</p>
+        <h1>Your rooms, rent and repairs, <em>under control</em>.</h1>
+        <p className="land-sub">A clear owner workspace for collections, occupancy, residents and maintenance. No signup needed for the demo.</p>
+
+        <div className="land-owner-callout">
+          <div>
+            <span>For property owners</span>
+            <h2>Own a PG? Give it a chief of staff.</h2>
+            <p>Start with the sample workspace or build your own property structure.</p>
+          </div>
+          <div>
+            <a className="main-button" href="/dashboard">Open workspace</a>
+            <a className="quiet-button" href="/dashboard?newProperty=1">Set up a property</a>
+          </div>
+        </div>
+
+        <a className="land-prompt" href="/dashboard" aria-label="Try Ask RentWise in the live demo">
           <span className="prompt-orb" aria-hidden="true">✦</span>
           <span className="land-prompt-copy" aria-live="polite">
             <em key={promptExamples[exampleIndex]}>{promptExamples[exampleIndex]}</em>
           </span>
           <b>Ask<i>↗</i></b>
         </a>
-        <p className="land-hint">Live demo · pre-loaded with a working PG · no login needed</p>
-        <div className="land-proof">
-          <span><b>18</b> residents</span>
-          <span><b>13</b> rooms</span>
-          <span><b>₹71,993</b> collected this month</span>
-          <span><b>78%</b> collection rate</span>
-        </div>
+        <p className="land-hint">Live sample property · no login · changes stay on your device</p>
       </section>
 
       <section className="land-properties" id="properties">
-        <header className="land-section-head">
+        <header className="land-section-head concise">
           <div>
-            <p className="overline">One system, many property models</p>
-            <h2>Built around how Indian PGs actually operate.</h2>
+            <p className="overline">Flexible property setup</p>
+            <h2>Model the PG you actually run.</h2>
           </div>
-          <p>Start with the structure you run today. RentWise adapts the inventory, collection rules and resident policies instead of forcing every property into the same template.</p>
+          <p>Mixed sharing, meals, utilities and resident policies—without duplicate room-by-room setup.</p>
         </header>
 
         <div className="property-showcase-grid">
           <article className="property-blueprint">
             <div className="blueprint-toolbar">
               <span><i /> Property canvas</span>
-              <b>18 of 24 beds live</b>
+              <b>Live overview</b>
             </div>
             <div className="blueprint-property">
-              <span className="blueprint-monogram">AP</span>
+              <span className="blueprint-monogram">AR</span>
               <div>
                 <strong>Aarohi Residency</strong>
-                <small>3 floors · mixed sharing · meals included</small>
+                <small>Ladies PG · 3 floors · meals included</small>
               </div>
               <em>75% occupied</em>
             </div>
-            <div className="blueprint-building" aria-label="Example mixed-sharing property layout">
-              {[
-                { floor: '03', rooms: ['3B', '3B', '2B'] },
-                { floor: '02', rooms: ['4B', '4B', '2B'] },
-                { floor: '01', rooms: ['2B', '3B', '1B'] },
-              ].map((row, rowIndex) => (
-                <div className="blueprint-floor" key={row.floor}>
-                  <span>Floor {row.floor}</span>
-                  <div>
-                    {row.rooms.map((room, roomIndex) => (
-                      <i className={rowIndex === 0 && roomIndex === 2 ? 'available' : ''} key={`${row.floor}-${roomIndex}`}>
-                        <b>{room}</b><small>{rowIndex === 0 && roomIndex === 2 ? '1 open' : 'occupied'}</small>
-                      </i>
-                    ))}
-                  </div>
-                </div>
+
+            <div className="canvas-metrics">
+              <div><span>Occupied</span><strong>18 / 24</strong></div>
+              <div><span>Collected</span><strong>₹71,993</strong></div>
+              <div><span>Needs action</span><strong>3 items</strong></div>
+            </div>
+
+            <div className="canvas-mix" aria-label="Example sharing mix">
+              {roomMix.map((room) => (
+                <article key={room.label}>
+                  <span>{room.label}</span>
+                  <strong>{room.detail}</strong>
+                  <small className={room.status === 'Full' ? 'full' : ''}>{room.status}</small>
+                </article>
               ))}
             </div>
             <footer>
-              <span>Meals · veg + non-veg</span>
-              <span>Electricity · metered</span>
-              <span>Notice · 30 days</span>
+              <span>Meals included</span>
+              <span>Metered electricity</span>
+              <span>30-day notice</span>
             </footer>
           </article>
 
           <div className="property-model-list">
+            <div className="model-list-intro"><span>Choose a starting model</span><strong>Everything stays editable.</strong></div>
             {propertyModels.map((model, index) => (
               <article className={index === 0 ? 'active' : ''} key={model.title}>
                 <span className={`model-mark ${model.tone}`}>{model.code}</span>
@@ -132,71 +135,40 @@ export default function Landing() {
                   <strong>{model.layout}</strong>
                   <p>{model.copy}</p>
                 </div>
-                <i>↗</i>
+                <i>{index + 1}</i>
               </article>
             ))}
           </div>
         </div>
 
         <div className="india-ready-strip">
-          <strong>India-ready by design</strong>
+          <strong>India-ready defaults</strong>
           <span>1–6 sharing</span>
-          <span>UPI + manual receipts</span>
-          <span>Prorated move-ins</span>
+          <span>UPI + receipts</span>
           <span>Meals + utilities</span>
-          <span>Agreement + verification controls</span>
+          <span>Agreement + verification</span>
         </div>
       </section>
 
-      <section className="land-bento" id="features">
-        {features.map((feature) => (
-          <article key={feature.title} className={feature.wide ? 'land-card wide' : 'land-card'}>
-            <span className="land-card-icon">{feature.icon}</span>
-            <h2>{feature.title}</h2>
-            <p>{feature.copy}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="land-steps" id="how">
-        <p className="overline">How it works</p>
-        <h2>A few minutes to a calmer property.</h2>
+      <section className="land-essentials" id="features">
+        <header>
+          <p className="overline">The daily essentials</p>
+          <h2>Less admin. Better visibility.</h2>
+        </header>
         <div>
-          {steps.map((step) => (
-            <article key={step.n}>
-              <span>{step.n}</span>
-              <h3>{step.title}</h3>
-              <p>{step.copy}</p>
+          {essentials.map((feature) => (
+            <article key={feature.title}>
+              <span>{feature.icon}</span>
+              <h3>{feature.title}</h3>
+              <p>{feature.copy}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="owner-foundations" aria-label="Owner-ready foundations">
-        <div>
-          <p className="overline">Owner-ready foundations</p>
-          <h2>Your operating data stays useful beyond the dashboard.</h2>
-        </div>
-        <ul>
-          <li><b>Portable portfolio backup</b><span>Export and restore every property, room and record as a dated file.</span></li>
-          <li><b>Property-specific rules</b><span>Keep different rent, deposit, meal and notice defaults per PG.</span></li>
-          <li><b>Document readiness</b><span>Track ID proof, agreements and verification without pretending one rule fits every city.</span></li>
-          <li><b>Mobile-first operations</b><span>Allot beds, record rent and review issues from the front desk or on the move.</span></li>
-        </ul>
-      </section>
-
-      <section className="land-cta">
-        <h2>Own a PG? Give it a chief of staff.</h2>
-        <p>Explore the complete owner workflow with realistic sample data. Your changes stay in your browser.</p>
-        <div>
-          <a className="main-button" href="/dashboard">Open the live workspace</a>
-          <a className="quiet-button" href="/dashboard?newProperty=1">Set up a new property</a>
-        </div>
-      </section>
-
       <footer className="land-footer">
         <span><BrandMark /> RentWise OS</span>
-        <p>Built for Indian PGs & hostels · Demo workspace uses sample data only</p>
+        <p>Built for Indian PGs & hostels · Sample data only</p>
       </footer>
     </div>
   );

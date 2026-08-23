@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import BrandMark from '../components/BrandMark';
+import ThemeToggle from '../components/ThemeToggle';
 import PropertyOnboarding, { PropertyDraft, roomOccupancies } from './onboarding';
 
 type View = 'overview' | 'property' | 'tenants' | 'rent' | 'maintenance' | 'documents';
@@ -488,11 +489,11 @@ function Workspace() {
             ['overview', '⌂', 'Today'], ['property', '▦', 'Property'], ['tenants', '♙', 'Tenants'], ['rent', '₹', 'Rent & payments'], ['documents', '⌑', 'Documents'], ['maintenance', '◇', 'Maintenance'],
           ] as [View, string, string][]).map(([id, icon, label]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => goTo(id)}><i>{icon}</i><span>{label}</span>{id === 'rent' && <b>{tenants.filter((tenant) => balanceFor(tenant) > 0).length}</b>}{id === 'maintenance' && orders.length > 0 && <b>{orders.filter((order) => order.status !== 'resolved').length}</b>}</button>)}
         </nav>
-        <div className="side-bottom"><div className="owner-chip"><span>SK</span><div><strong>Sample owner</strong><small>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</small></div><b>•••</b></div><p className="no-login">Public demo · Changes stay in this browser</p></div>
+        <div className="side-bottom"><ThemeToggle /><div className="owner-chip"><span>SK</span><div><strong>Sample owner</strong><small>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</small></div><b>•••</b></div><p className="no-login">Public demo · Changes stay in this browser</p></div>
       </aside>
 
       <div className="workspace">
-        <div className="mobile-topbar"><button className="mobile-brand" onClick={() => goTo('overview')}><BrandMark /><strong>RentWise</strong></button><button className="mobile-lookup" onClick={() => { setFilter('all'); goTo('tenants'); }}><span>⌕</span><em>Search tenant or room</em></button><button className="mobile-create" aria-label="Create new allotment" onClick={() => setModal('tenant')}>＋</button></div>
+        <div className="mobile-topbar"><button className="mobile-brand" onClick={() => goTo('overview')}><BrandMark /><strong>RentWise</strong></button><button className="mobile-lookup" onClick={() => { setFilter('all'); goTo('tenants'); }}><span>⌕</span><em>Search tenant or room</em></button><ThemeToggle compact /><button className="mobile-create" aria-label="Create new allotment" onClick={() => setModal('tenant')}>＋</button></div>
         <div className="mobile-property-switch">
           <button className="property-select" aria-expanded={switcherOpen} onClick={() => setSwitcherOpen((open) => !open)}><span className="property-thumb">{propertyInitials(property?.name ?? 'Saffron Stay PG')}</span><span><small>ACTIVE PROPERTY</small><strong>{property?.name ?? 'Saffron Stay PG'}</strong><em>{properties.length} {properties.length === 1 ? 'property' : 'properties'} in portfolio</em></span><b>⌄</b></button>
           {switcherOpen && <><button className="prop-backdrop" aria-label="Close property menu" onClick={() => setSwitcherOpen(false)} /><div className="prop-menu" role="menu">{properties.map((item) => <button key={item.id} role="menuitem" className={item.id === activePropertyId ? 'prop-item active' : 'prop-item'} onClick={() => switchProperty(item.id)}><span>{propertyInitials(item.name)}</span><p><strong>{item.name}</strong><small>{item.address || 'No address yet'}</small></p>{item.id === activePropertyId && <b>✓</b>}</button>)}<div className="prop-divider" /><button role="menuitem" className="prop-item add" onClick={openPropertyOnboarding}><span>＋</span><p><strong>Add another property</strong><small>Build rooms, beds and rent defaults</small></p></button><button role="menuitem" className="prop-item backup" onClick={downloadPortfolioBackup}><span>⇩</span><p><strong>Download portfolio backup</strong><small>Keep a portable copy of this browser’s data</small></p></button><button role="menuitem" className="prop-item backup" onClick={() => { setSwitcherOpen(false); backupInputRef.current?.click(); }}><span>↥</span><p><strong>Restore portfolio backup</strong><small>Open a RentWise JSON backup on this device</small></p></button></div></>}
