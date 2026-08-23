@@ -93,7 +93,7 @@ export default function Landing() {
         <p>Explore the complete owner workflow with realistic sample data. Your changes stay in your browser.</p>
         <div>
           <a className="main-button" href="/dashboard">Open the live workspace</a>
-          <a className="quiet-button" href="#features">Review the features</a>
+          <a className="quiet-button" href="/dashboard?newProperty=1">Set up a new property</a>
         </div>
       </section>
 
