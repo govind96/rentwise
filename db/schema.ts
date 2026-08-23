@@ -1,7 +1,14 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
+export const owners = sqliteTable('owners', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  email: text('email').notNull().unique(),
+  createdAt: text('created_at').notNull(),
+});
+
 export const properties = sqliteTable('properties', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  ownerId: integer('owner_id').notNull().references(() => owners.id),
   name: text('name').notNull(),
   address: text('address'),
   createdAt: text('created_at').notNull(),
@@ -48,6 +55,7 @@ export const charges = sqliteTable('charges', {
   dueOn: text('due_on').notNull(),
   status: text('status', { enum: ['due', 'partial', 'paid', 'waived'] }).notNull().default('due'),
 }, (table) => [
+  uniqueIndex('idx_charges_tenancy_kind_period').on(table.tenancyId, table.kind, table.period),
   index('idx_charges_tenancy_period').on(table.tenancyId, table.period),
   index('idx_charges_status_due').on(table.status, table.dueOn),
 ]);
