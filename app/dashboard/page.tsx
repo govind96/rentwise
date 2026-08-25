@@ -34,6 +34,23 @@ type PortfolioProperty = PropertyInfo & { inventory: RoomInventory; tenants: Ten
 const money = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 const shortMoney = (value: number) => value >= 100000 ? `₹${(value / 100000).toFixed(1)}L` : `₹${Math.round(value / 1000)}k`;
 
+const NAV_ICONS: Record<View, string[]> = {
+  overview: ['m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 22v-8h6v8'],
+  property: ['M3 3h7v7H3z', 'M14 3h7v7h-7z', 'M14 14h7v7h-7z', 'M3 14h7v7H3z'],
+  tenants: ['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'M22 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75'],
+  rent: ['M6 3h12', 'M6 8h12', 'm6 13 8.5 8', 'M6 13h3', 'M9 13c6.667 0 6.667-10 0-10'],
+  documents: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z', 'M14 2v6h6', 'M16 13H8', 'M16 17H8'],
+  maintenance: ['M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'],
+};
+
+function NavIcon({ paths }: { paths: string[] }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {paths.map((d) => <path key={d} d={d} />)}
+    </svg>
+  );
+}
+
 const seededTenants: Tenant[] = [
   { id: 1, room: '1', bed: 'A', name: 'Mahi Kumari', allotment: '2026-08-04', rent: 2000, security: 2000, firstMonthRent: 1806, received: 3806, status: 'paid', kyc: 'verified' },
   { id: 2, room: '1', bed: 'B', name: 'Muskan Kumari', allotment: '2026-08-04', rent: 2000, security: 2000, firstMonthRent: 1806, received: 3806, status: 'paid', kyc: 'verified' },
@@ -486,8 +503,8 @@ function Workspace() {
         <nav aria-label="Owner workspace">
           <p>WORKSPACE</p>
           {([
-            ['overview', '⌂', 'Today'], ['property', '▦', 'Property'], ['tenants', '♙', 'Tenants'], ['rent', '₹', 'Rent & payments'], ['documents', '⌑', 'Documents'], ['maintenance', '◇', 'Maintenance'],
-          ] as [View, string, string][]).map(([id, icon, label]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => goTo(id)}><i>{icon}</i><span>{label}</span>{id === 'rent' && <b>{tenants.filter((tenant) => balanceFor(tenant) > 0).length}</b>}{id === 'maintenance' && orders.length > 0 && <b>{orders.filter((order) => order.status !== 'resolved').length}</b>}</button>)}
+            ['overview', 'Today'], ['property', 'Property'], ['tenants', 'Tenants'], ['rent', 'Rent & payments'], ['documents', 'Documents'], ['maintenance', 'Maintenance'],
+          ] as [View, string][]).map(([id, label]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => goTo(id)}><NavIcon paths={NAV_ICONS[id]} /><span>{label}</span>{id === 'rent' && <b>{tenants.filter((tenant) => balanceFor(tenant) > 0).length}</b>}{id === 'maintenance' && orders.length > 0 && <b>{orders.filter((order) => order.status !== 'resolved').length}</b>}</button>)}
         </nav>
         <div className="side-bottom"><ThemeToggle /><div className="owner-chip"><span>SK</span><div><strong>Sample owner</strong><small>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</small></div><b>•••</b></div><p className="no-login">Public demo · Changes stay in this browser</p></div>
       </aside>
