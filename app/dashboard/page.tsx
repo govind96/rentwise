@@ -3,7 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import BrandMark from '../components/BrandMark';
 import ThemeToggle from '../components/ThemeToggle';
-import PropertyOnboarding, { PropertyDraft, roomOccupancies } from './onboarding';
+import PropertyOnboarding, { PropertyDraft, PropertyPreset, roomOccupancies } from './onboarding';
 
 type View = 'overview' | 'property' | 'tenants' | 'rent' | 'maintenance' | 'documents';
 type Tenant = {
@@ -204,6 +204,7 @@ function Workspace() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [propEditOpen, setPropEditOpen] = useState(false);
   const [propertyOnboardingOpen, setPropertyOnboardingOpen] = useState(false);
+  const [propertyPreset, setPropertyPreset] = useState<PropertyPreset>('classic-pg');
   const [realBeds, setRealBeds] = useState<RealBed[]>([]);
   const [demoInventory, setDemoInventory] = useState<RoomInventory>(seededInventory);
   const [realHistory, setRealHistory] = useState<Record<number, Receipt[]>>({});
@@ -281,7 +282,10 @@ function Workspace() {
           setTenants(active.tenants); setOrders(active.orders); setDemoInventory(active.inventory);
           setDraftRent(active.defaultRent ?? 3000);
         }
-        if (new URLSearchParams(window.location.search).get('newProperty') === '1') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('newProperty') === '1') {
+          const requestedPreset = params.get('preset');
+          setPropertyPreset(requestedPreset === 'student-hostel' || requestedPreset === 'co-living' ? requestedPreset : 'classic-pg');
           setPropertyOnboardingOpen(true);
           window.history.replaceState({}, '', window.location.pathname);
         }
@@ -339,7 +343,7 @@ function Workspace() {
     catch { showToast('This browser could not save the demo change'); }
   }
 
-  function openPropertyOnboarding() { setSwitcherOpen(false); setPropertyOnboardingOpen(true); }
+  function openPropertyOnboarding() { setSwitcherOpen(false); setPropertyPreset('classic-pg'); setPropertyOnboardingOpen(true); }
   function downloadPortfolioBackup() {
     const latestPortfolio = portfolio.map((item) => item.id === activePropertyId ? { ...item, tenants, orders, inventory: demoInventory } : item);
     const payload = JSON.stringify({ format: 'rentwise-portfolio', version: 1, exportedAt: new Date().toISOString(), activePropertyId, portfolio: latestPortfolio }, null, 2);
@@ -544,7 +548,7 @@ function Workspace() {
       {modal === 'tenant' && <AddTenantModal availableBeds={availableBeds} draftDate={draftDate} draftRent={draftRent} defaultSecurity={property?.defaultSecurity ?? 3000} onDate={setDraftDate} onRent={setDraftRent} onClose={() => setModal(null)} onSubmit={addTenant} />}
       {modal === 'payment' && selectedTenant && <PaymentModal tenant={selectedTenant} onClose={() => setModal(null)} onSubmit={recordPayment} />}
       {modal === 'maintenance' && <MaintenanceModal tenants={tenants} onClose={() => setModal(null)} onSubmit={addMaintenance} />}
-      {propertyOnboardingOpen && <PropertyOnboarding existingNames={properties.map((item) => item.name)} onClose={() => setPropertyOnboardingOpen(false)} onCreated={createProperty} />}
+      {propertyOnboardingOpen && <PropertyOnboarding preset={propertyPreset} existingNames={properties.map((item) => item.name)} onClose={() => setPropertyOnboardingOpen(false)} onCreated={createProperty} />}
       {assistantOpen && <AssistantModal tenants={tenants} orders={orders} metrics={metrics} availableBeds={availableBeds.length} propertyName={propertyLabel} onClose={() => setAssistantOpen(false)} onView={(next) => { setAssistantOpen(false); goTo(next); }} onPay={(id) => { setAssistantOpen(false); openPayment(id); }} />}
       {toast && <div className="toast" role="status">✓ {toast}</div>}
     </div>
@@ -608,24 +612,25 @@ function Overview({ propertyName, demo, tenants, orders, metrics, inventory, ava
       </article>
     </section>
 
-    <section className="overview-main">
-      <article className="surface attention-list"><div className="surface-head"><div><p className="overline">TODAY’S PRIORITIES</p><h2>What needs you</h2></div><span>{pending.length + (topOrder ? 1 : 0)} open items</span></div>
-        {topOrder && <div className="priority-item urgent"><span className="priority-mark">!</span><div><strong>{topOrder.title} · Room {topOrder.room}</strong><p>Reported by {topOrder.tenant} · {topOrder.category}</p></div><button onClick={() => onView('maintenance')}>Review</button></div>}
-        {!topOrder && !pending.length && <div className="empty"><strong>All clear</strong><span>No open priorities — enjoy the calm.</span></div>}
-        {pending.slice(0, topOrder ? 4 : 5).map((tenant, index) => <div className="priority-item" key={tenant.id}><span className={index < 2 ? 'priority-mark money' : 'priority-mark doc'}>{index < 2 ? '₹' : '○'}</span><div><strong>{index < 2 ? `${money.format(balanceFor(tenant))} pending from ${tenant.name}` : `${tenant.name} needs document review`}</strong><p>Room {tenant.room} · Bed {tenant.bed} {index < 2 ? '· Part payment received' : '· KYC incomplete'}</p></div><button onClick={() => index < 2 ? onPayment(tenant.id) : onTenant(tenant.id)}>{index < 2 ? 'Record' : 'Open'}</button></div>)}
-      </article>
+    <section className="overview-columns">
+      <div className="overview-column">
+        <article className="surface attention-list"><div className="surface-head"><div><p className="overline">TODAY’S PRIORITIES</p><h2>What needs you</h2></div><span>{pending.length + (topOrder ? 1 : 0)} open items</span></div>
+          {topOrder && <div className="priority-item urgent"><span className="priority-mark">!</span><div><strong>{topOrder.title} · Room {topOrder.room}</strong><p>Reported by {topOrder.tenant} · {topOrder.category}</p></div><button onClick={() => onView('maintenance')}>Review</button></div>}
+          {!topOrder && !pending.length && <div className="empty"><strong>All clear</strong><span>No open priorities — enjoy the calm.</span></div>}
+          {pending.slice(0, topOrder ? 4 : 5).map((tenant, index) => <div className="priority-item" key={tenant.id}><span className={index < 2 ? 'priority-mark money' : 'priority-mark doc'}>{index < 2 ? '₹' : '○'}</span><div><strong>{index < 2 ? `${money.format(balanceFor(tenant))} pending from ${tenant.name}` : `${tenant.name} needs document review`}</strong><p>Room {tenant.room} · Bed {tenant.bed} {index < 2 ? '· Part payment received' : '· KYC incomplete'}</p></div><button onClick={() => index < 2 ? onPayment(tenant.id) : onTenant(tenant.id)}>{index < 2 ? 'Record' : 'Open'}</button></div>)}
+        </article>
+        <article className="surface occupancy"><div className="surface-head"><div><p className="overline">OCCUPANCY</p><h2>Rooms at a glance</h2></div><button className="link-button" onClick={() => onView('property')}>All rooms →</button></div><div className="mini-rooms">{inventory.map(([room, beds]) => { const used = beds.filter((bed) => tenants.some((tenant) => tenant.room === room && tenant.bed === bed)).length; return <div key={room} className={used === beds.length ? 'mini-room full' : 'mini-room'}><div><strong>{room}</strong><span>{used}/{beds.length}</span></div><div>{beds.map((bed) => <i key={bed} className={tenants.some((tenant) => tenant.room === room && tenant.bed === bed) ? 'used' : ''}>{bed}</i>)}</div></div>; })}</div></article>
+      </div>
 
-      <article className="surface collection-card"><div className="surface-head"><div><p className="overline">{demo ? 'DEMO COLLECTION' : 'THIS MONTH’S COLLECTION'}</p><h2>Collection pulse</h2></div><button className="link-button" onClick={() => onView('rent')}>Open ledger <span>→</span></button></div>
-        <div className="collection-hero"><div className="ring" style={{ '--progress': `${collectionPercent}%` } as React.CSSProperties}><div><strong>{collectionPercent}%</strong><span>received</span></div></div><div className="collection-total"><span>Collected so far</span><strong>{money.format(metrics.collected)}</strong><small>of {money.format(metrics.expected)} tracked</small></div></div>
-        <div className="collection-progress"><div><span>Month progress</span><strong>{collectionPercent}% received</strong></div><div className="wide-meter" aria-label={`${collectionPercent}% of receivables collected`}><i style={{ width: `${collectionPercent}%` }} /></div></div>
-        <div className="collection-breakdown"><div><span>Still to collect</span><strong>{money.format(metrics.pending)}</strong><small>{pending.length} residents need a follow-up</small></div><div><span>This month’s rent</span><strong>{money.format(metrics.recurringCollected)}</strong><small>of {money.format(metrics.recurringExpected)} billed</small></div></div>
-        <div className="insight"><span>↗</span><p><strong>Follow-up is focused.</strong> {pending.length || 'No'} residents account for {money.format(metrics.pending)} still to collect this month.</p></div>
-      </article>
-    </section>
-
-    <section className="overview-lower">
-      <article className="surface occupancy"><div className="surface-head"><div><p className="overline">OCCUPANCY</p><h2>Rooms at a glance</h2></div><button className="link-button" onClick={() => onView('property')}>All rooms →</button></div><div className="mini-rooms">{inventory.map(([room, beds]) => { const used = beds.filter((bed) => tenants.some((tenant) => tenant.room === room && tenant.bed === bed)).length; return <div key={room} className={used === beds.length ? 'mini-room full' : 'mini-room'}><div><strong>{room}</strong><span>{used}/{beds.length}</span></div><div>{beds.map((bed) => <i key={bed} className={tenants.some((tenant) => tenant.room === room && tenant.bed === bed) ? 'used' : ''}>{bed}</i>)}</div></div>; })}</div></article>
-      <article className="surface activity"><div className="surface-head"><div><p className="overline">RECENT ACTIVITY</p><h2>Latest at {propertyName}</h2></div></div>{demo ? <div className="timeline"><div><i className="pay">₹</i><p><strong>Payment recorded</strong><span>₹1,000 from Meera Kumari</span></p><time>9:08 AM</time></div><div><i className="move">↳</i><p><strong>New allotment</strong><span>Kabita moved into Room 23 · B</span></p><time>Yesterday</time></div><div><i className="fix">◇</i><p><strong>Repair assigned</strong><span>Room 21 fan · Ramesh Electric</span></p><time>Yesterday</time></div></div> : <div className="empty"><strong>Fresh workspace</strong><span>Activity appears as you allot beds and record receipts.</span></div>}</article>
+      <div className="overview-column">
+        <article className="surface collection-card"><div className="surface-head"><div><p className="overline">{demo ? 'DEMO COLLECTION' : 'THIS MONTH’S COLLECTION'}</p><h2>Collection pulse</h2></div><button className="link-button" onClick={() => onView('rent')}>Open ledger <span>→</span></button></div>
+          <div className="collection-hero"><div className="ring" style={{ '--progress': `${collectionPercent}%` } as React.CSSProperties}><div><strong>{collectionPercent}%</strong><span>received</span></div></div><div className="collection-total"><span>Collected so far</span><strong>{money.format(metrics.collected)}</strong><small>of {money.format(metrics.expected)} tracked</small></div></div>
+          <div className="collection-progress"><div><span>Month progress</span><strong>{collectionPercent}% received</strong></div><div className="wide-meter" aria-label={`${collectionPercent}% of receivables collected`}><i style={{ width: `${collectionPercent}%` }} /></div></div>
+          <div className="collection-breakdown"><div><span>Still to collect</span><strong>{money.format(metrics.pending)}</strong><small>{pending.length} residents need a follow-up</small></div><div><span>This month’s rent</span><strong>{money.format(metrics.recurringCollected)}</strong><small>of {money.format(metrics.recurringExpected)} billed</small></div></div>
+          <div className="insight"><span>↗</span><p><strong>Follow-up is focused.</strong> {pending.length || 'No'} residents account for {money.format(metrics.pending)} still to collect this month.</p></div>
+        </article>
+        <article className="surface activity"><div className="surface-head"><div><p className="overline">RECENT ACTIVITY</p><h2>Latest at {propertyName}</h2></div></div>{demo ? <div className="timeline"><div><i className="pay">₹</i><p><strong>Payment recorded</strong><span>₹1,000 from Meera Kumari</span></p><time>9:08 AM</time></div><div><i className="move">↳</i><p><strong>New allotment</strong><span>Kabita moved into Room 23 · B</span></p><time>Yesterday</time></div><div><i className="fix">◇</i><p><strong>Repair assigned</strong><span>Room 21 fan · Ramesh Electric</span></p><time>Yesterday</time></div></div> : <div className="empty"><strong>Fresh workspace</strong><span>Activity appears as you allot beds and record receipts.</span></div>}</article>
+      </div>
     </section>
   </div>;
 }

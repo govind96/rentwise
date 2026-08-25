@@ -13,20 +13,30 @@ const promptExamples = [
 ];
 
 const propertyModels = [
-  { code: 'PG', title: 'Classic PG', layout: 'Single to triple sharing', copy: 'Meals, utilities and resident verification.', tone: 'lilac' },
-  { code: 'HS', title: 'Student hostel', layout: 'Four and six sharing', copy: 'Dense bed inventory with mess operations.', tone: 'mint' },
-  { code: 'CL', title: 'Co-living', layout: 'Private and shared rooms', copy: 'Bundled services with flexible policies.', tone: 'peach' },
-];
-
-const roomMix = [
-  { label: 'Single', detail: '2 rooms · 2 beds', status: 'Full' },
-  { label: 'Double', detail: '5 rooms · 10 beds', status: '2 open' },
-  { label: 'Triple', detail: '2 rooms · 6 beds', status: '1 open' },
-  { label: 'Dorm 6', detail: '1 room · 6 beds', status: '3 open' },
+  {
+    preset: 'classic-pg', code: 'PG', title: 'Classic PG', layout: 'Single to triple sharing', copy: 'Meals, utilities and resident verification.', tone: 'lilac',
+    example: 'Aarohi Residency', summary: 'Ladies PG · 3 floors · meals included', occupancy: '75% occupied', occupied: '18 / 24', collected: '₹71,993', attention: '3 items',
+    mix: [{ label: 'Single', detail: '2 rooms · 2 beds', status: 'Full' }, { label: 'Double', detail: '5 rooms · 10 beds', status: '2 open' }, { label: 'Triple', detail: '2 rooms · 6 beds', status: '1 open' }, { label: 'Dorm 6', detail: '1 room · 6 beds', status: '3 open' }],
+    tags: ['Meals included', 'Metered electricity', '30-day notice'],
+  },
+  {
+    preset: 'student-hostel', code: 'HS', title: 'Student hostel', layout: 'Four and six sharing', copy: 'Dense bed inventory with mess operations.', tone: 'mint',
+    example: 'Campus House', summary: 'Men’s hostel · 4 floors · mess included', occupancy: '81% occupied', occupied: '39 / 48', collected: '₹2,18,400', attention: '7 items',
+    mix: [{ label: 'Four share', detail: '6 rooms · 24 beds', status: '4 open' }, { label: 'Dorm 6', detail: '4 rooms · 24 beds', status: '5 open' }],
+    tags: ['Mess included', 'Power backup', 'Shared bathrooms'],
+  },
+  {
+    preset: 'co-living', code: 'CL', title: 'Co-living', layout: 'Private and shared rooms', copy: 'Bundled services with flexible policies.', tone: 'peach',
+    example: 'The Nook Living', summary: 'Co-living · 5 floors · flexible services', occupancy: '86% occupied', occupied: '19 / 22', collected: '₹1,92,500', attention: '2 items',
+    mix: [{ label: 'Private', detail: '6 rooms · 6 beds', status: '1 open' }, { label: 'Double', detail: '8 rooms · 16 beds', status: '2 open' }],
+    tags: ['Optional meals', 'Attached bathrooms', 'AC & non-AC'],
+  },
 ];
 
 export default function Landing() {
   const [exampleIndex, setExampleIndex] = useState(0);
+  const [selectedModel, setSelectedModel] = useState(0);
+  const activeModel = propertyModels[selectedModel];
 
   useEffect(() => {
     const cycle = window.setInterval(() => setExampleIndex((index) => (index + 1) % promptExamples.length), 3800);
@@ -230,22 +240,22 @@ export default function Landing() {
                 <b>Live overview</b>
               </div>
               <div className="blueprint-property">
-                <span className="blueprint-monogram">AR</span>
+                <span className="blueprint-monogram">{activeModel.code}</span>
                 <div>
-                  <strong>Aarohi Residency</strong>
-                  <small>Ladies PG · 3 floors · meals included</small>
+                  <strong>{activeModel.example}</strong>
+                  <small>{activeModel.summary}</small>
                 </div>
-                <em>75% occupied</em>
+                <em>{activeModel.occupancy}</em>
               </div>
 
               <div className="canvas-metrics">
-                <div><span>Occupied</span><strong>18 / 24</strong></div>
-                <div><span>Collected</span><strong>₹71,993</strong></div>
-                <div><span>Needs action</span><strong>3 items</strong></div>
+                <div><span>Occupied</span><strong>{activeModel.occupied}</strong></div>
+                <div><span>Collected</span><strong>{activeModel.collected}</strong></div>
+                <div><span>Needs action</span><strong>{activeModel.attention}</strong></div>
               </div>
 
               <div className="canvas-mix" aria-label="Example sharing mix">
-                {roomMix.map((room) => (
+                {activeModel.mix.map((room) => (
                   <article key={room.label}>
                     <span>{room.label}</span>
                     <strong>{room.detail}</strong>
@@ -254,23 +264,24 @@ export default function Landing() {
                 ))}
               </div>
               <footer>
-                <span>Meals included</span>
-                <span>Metered electricity</span>
-                <span>30-day notice</span>
+                {activeModel.tags.map((tag) => <span key={tag}>{tag}</span>)}
               </footer>
             </article>
 
             <div className="property-model-list">
               <div className="model-list-intro"><span>Choose a starting model</span><strong>Everything stays editable.</strong></div>
               {propertyModels.map((model, index) => (
-                <article className={index === 0 ? 'active' : ''} key={model.title}>
-                  <span className={`model-mark ${model.tone}`}>{model.code}</span>
-                  <div>
-                    <h3>{model.title}</h3>
-                    <strong>{model.layout}</strong>
-                    <p>{model.copy}</p>
-                  </div>
-                  <i>{index + 1}</i>
+                <article className={selectedModel === index ? 'active' : ''} key={model.title}>
+                  <button type="button" className="model-choice" aria-pressed={selectedModel === index} onClick={() => setSelectedModel(index)}>
+                    <span className={`model-mark ${model.tone}`}>{model.code}</span>
+                    <div>
+                      <h3>{model.title}</h3>
+                      <strong>{model.layout}</strong>
+                      <p>{model.copy}</p>
+                    </div>
+                    <i>{selectedModel === index ? '✓' : index + 1}</i>
+                  </button>
+                  {selectedModel === index && <Link className="model-start" href={`/dashboard?newProperty=1&preset=${model.preset}`}>Start with {model.title} →</Link>}
                 </article>
               ))}
             </div>

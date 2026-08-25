@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import BrandMark from '../components/BrandMark';
 
 export type SharingPlan = { occupancy: 1 | 2 | 3 | 4 | 6; rooms: number };
+export type PropertyPreset = 'classic-pg' | 'student-hostel' | 'co-living';
 
 export type PropertyDraft = {
   name: string;
@@ -46,25 +47,53 @@ const steps = [
   { label: 'Review', hint: 'Ready to create' },
 ];
 
+const baseDraft: PropertyDraft = {
+  name: '', address: '', city: '', type: 'Paying guest', audience: 'Women',
+  layoutMode: 'Uniform rooms', rooms: 10, bedsPerRoom: 2,
+  roomMix: [{ occupancy: 1, rooms: 2 }, { occupancy: 2, rooms: 6 }, { occupancy: 3, rooms: 4 }, { occupancy: 4, rooms: 0 }, { occupancy: 6, rooms: 0 }],
+  startingRoom: 1, floors: 3, rent: 3000, security: 3000,
+  rentDueDay: 5, graceDays: 3, lateFee: 250, amenities: ['Wi-Fi', 'Housekeeping', 'CCTV'],
+  mealPlan: 'Included', electricityPlan: 'Metered separately', climatePlan: 'Mixed AC & non-AC', bathroomPlan: 'Mixed',
+  noticeDays: 30, agreementRequired: true, verificationRequired: true,
+};
+
+const presetDrafts: Record<PropertyPreset, Partial<PropertyDraft>> = {
+  'classic-pg': {},
+  'student-hostel': {
+    type: 'Hostel', audience: 'Men', layoutMode: 'Mixed sharing', floors: 4,
+    roomMix: [{ occupancy: 1, rooms: 0 }, { occupancy: 2, rooms: 0 }, { occupancy: 3, rooms: 0 }, { occupancy: 4, rooms: 6 }, { occupancy: 6, rooms: 4 }],
+    rent: 6500, security: 6500, amenities: ['Wi-Fi', 'Meals', 'Laundry', 'Power backup', 'Housekeeping', 'CCTV', 'RO water'],
+    mealPlan: 'Included', electricityPlan: 'Included in rent', climatePlan: 'Non-AC', bathroomPlan: 'Shared',
+  },
+  'co-living': {
+    type: 'Co-living', audience: 'Co-living', layoutMode: 'Mixed sharing', floors: 5,
+    roomMix: [{ occupancy: 1, rooms: 6 }, { occupancy: 2, rooms: 8 }, { occupancy: 3, rooms: 0 }, { occupancy: 4, rooms: 0 }, { occupancy: 6, rooms: 0 }],
+    rent: 10500, security: 21000, amenities: ['Wi-Fi', 'Laundry', 'Power backup', 'Housekeeping', 'CCTV', 'Parking', 'Air conditioning', 'Attached bathroom', 'Common kitchen'],
+    mealPlan: 'Optional add-on', electricityPlan: 'Metered separately', climatePlan: 'Mixed AC & non-AC', bathroomPlan: 'Attached',
+  },
+};
+
+function draftForPreset(preset: PropertyPreset): PropertyDraft {
+  const configured = presetDrafts[preset];
+  return {
+    ...baseDraft,
+    ...configured,
+    amenities: [...(configured.amenities ?? baseDraft.amenities)],
+    roomMix: (configured.roomMix ?? baseDraft.roomMix).map((plan) => ({ ...plan })),
+  };
+}
+
 function initials(value: string) {
   return value.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'PG';
 }
 
-export default function PropertyOnboarding({ existingNames, onClose, onCreated }: { existingNames: string[]; onClose: () => void; onCreated: (property: PropertyDraft) => void }) {
+export default function PropertyOnboarding({ existingNames, onClose, onCreated, preset = 'classic-pg' }: { existingNames: string[]; onClose: () => void; onCreated: (property: PropertyDraft) => void; preset?: PropertyPreset }) {
   const dialogRef = useRef<HTMLElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
-  const [draft, setDraft] = useState<PropertyDraft>({
-    name: '', address: '', city: '', type: 'Paying guest', audience: 'Women',
-    layoutMode: 'Uniform rooms', rooms: 10, bedsPerRoom: 2,
-    roomMix: [{ occupancy: 1, rooms: 2 }, { occupancy: 2, rooms: 6 }, { occupancy: 3, rooms: 4 }, { occupancy: 4, rooms: 0 }, { occupancy: 6, rooms: 0 }],
-    startingRoom: 1, floors: 3, rent: 3000, security: 3000,
-    rentDueDay: 5, graceDays: 3, lateFee: 250, amenities: ['Wi-Fi', 'Housekeeping', 'CCTV'],
-    mealPlan: 'Included', electricityPlan: 'Metered separately', climatePlan: 'Mixed AC & non-AC', bathroomPlan: 'Mixed',
-    noticeDays: 30, agreementRequired: true, verificationRequired: true,
-  });
+  const [draft, setDraft] = useState<PropertyDraft>(() => draftForPreset(preset));
   const occupancies = useMemo(() => roomOccupancies(draft), [draft]);
   const totalRooms = occupancies.length;
   const totalBeds = occupancies.reduce((sum, occupancy) => sum + occupancy, 0);
