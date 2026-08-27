@@ -59,8 +59,8 @@ export default function Landing() {
         <div className="land-nav-actions">
           <ThemeToggle compact />
           <a className="main-button" href="/dashboard">
-            <span className="nav-label-full">Open live demo</span>
-            <span className="nav-label-short">Open demo</span>
+            <span className="nav-label-full">Open owner workspace</span>
+            <span className="nav-label-short">Open workspace</span>
           </a>
         </div>
       </header>
@@ -72,22 +72,22 @@ export default function Landing() {
           <h1>Your rooms, rent and repairs, <em>under control</em>.</h1>
           <p className="land-sub">
             A clear owner workspace for collections, occupancy, residents and maintenance —
-            with a copilot that always knows your property. No signup needed for the demo.
+            with a copilot that always knows your property. Secure, owner-scoped and ready for daily operations.
           </p>
 
           <div className="hero-ctas">
-            <a className="main-button" href="/dashboard">Open live demo →</a>
+            <a className="main-button" href="/dashboard">Open owner workspace →</a>
             <a className="quiet-button" href="/dashboard?newProperty=1">Set up a property</a>
           </div>
 
-          <a className="land-prompt" href="/dashboard" aria-label="Try Ask RentWise in the live demo">
+          <a className="land-prompt" href="/dashboard" aria-label="Open Ask RentWise in the owner workspace">
             <span className="prompt-orb" aria-hidden="true">✦</span>
             <span className="land-prompt-copy" aria-live="polite">
               <em key={promptExamples[exampleIndex]}>{promptExamples[exampleIndex]}</em>
             </span>
             <b>Ask<i>↗</i></b>
           </a>
-          <p className="land-hint">LIVE SAMPLE PROPERTY · NO LOGIN · CHANGES STAY ON YOUR DEVICE</p>
+          <p className="land-hint">SECURE OWNER ACCESS · DURABLE RECORDS · BUILT FOR INDIA</p>
         </section>
 
         {/* ---------- pure-CSS product preview ---------- */}
@@ -187,7 +187,10 @@ export default function Landing() {
             <article className="bento-card wide">
               <span className="bento-icon" aria-hidden="true">⌑</span>
               <h3>Compliance without the chase</h3>
-              <p>Identity proofs, rental agreements and notice periods tracked per resident — with gentle follow-ups instead of WhatsApp archaeology. Document uploads arrive with the owner beta.</p>
+              <p>Identity proofs, rental agreements and notice periods tracked per resident — with consent capture, secure uploads and clear review status.</p>
+              <div className="bento-visual">
+                <div className="vz-docs" aria-hidden="true"><em>Aadhaar · Verified</em><em>Agreement · Signed</em><em>Notice · 30 days</em></div>
+              </div>
             </article>
           </div>
         </section>
@@ -303,7 +306,7 @@ export default function Landing() {
             <h2>Run your PG like a <em>product</em>.</h2>
             <p>Open the seeded workspace and click around — allot a bed, record a receipt, ask the copilot. Your changes stay private to this browser.</p>
             <div className="cta-actions">
-              <a className="main-button" href="/dashboard">Open live demo →</a>
+              <a className="main-button" href="/dashboard">Open owner workspace →</a>
               <a className="quiet-button light" href="/dashboard?newProperty=1">Set up a property</a>
             </div>
             <p className="cta-note">FREE DURING THE MVP · NO ACCOUNT · NOTHING TO INSTALL</p>
@@ -315,12 +318,14 @@ export default function Landing() {
         <div className="land-footer-inner">
           <div className="foot-col">
             <span className="land-brand"><BrandMark /><strong>RentWise</strong>&nbsp;<em>OS</em></span>
-            <p className="foot-note">The AI operating system for Indian PGs and hostels. This demo stores your changes in this browser only.</p>
+            <p className="foot-note">The operating system for Indian PGs and hostels. Owner-scoped records, secure documents and an auditable rent ledger.</p>
           </div>
           <div className="land-footer-cols">
             <div className="foot-col">
               <span>Product</span>
-              <a href="/dashboard">Live demo</a>
+              <a href="/dashboard">Owner workspace</a>
+              <a href="/privacy">Privacy</a>
+              <a href="/terms">Terms</a>
               <a href="#product">Features</a>
               <a href="#how">How it works</a>
               <a href="#properties">Property types</a>

@@ -24,23 +24,22 @@ export default function Login() {
             ))}
           </ul>
         </div>
-        <p className="auth-panel-foot">PUBLIC MVP · NO ACCOUNT REQUIRED</p>
+        <p className="auth-panel-foot">SECURE OWNER WORKSPACE</p>
       </section>
 
       <section className="auth-stage">
         <div className="auth-theme"><ThemeToggle compact /></div>
         <div className="auth-card">
           <span className="land-brand auth-brand"><BrandMark /><strong>RentWise</strong><em>OS</em></span>
-          <p className="overline">No account needed</p>
-          <h1>Owner accounts are coming later</h1>
+          <p className="overline">Owner access</p>
+          <h1>Sign in to your workspace</h1>
           <p className="auth-copy">
-            For this first MVP, the complete RentWise workspace is open as a
-            private-in-your-browser demo. There is no sign-in requirement — your
-            changes stay on this device.
+            Your properties, residents, receipts and documents stay scoped to
+            your verified account and are saved automatically.
           </p>
-          <Link className="main-button full auth-cta" href="/dashboard">Open the live demo →</Link>
+          <Link className="main-button full auth-cta" href="/signin-with-chatgpt?return_to=/dashboard">Sign in securely →</Link>
           <Link className="quiet-button full auth-cta" href="/">Back to the product page</Link>
-          <p className="auth-foot">Sample residents only · Your demo changes stay on this device</p>
+          <p className="auth-foot">Encrypted in transit · Owner-scoped access · Audit history</p>
         </div>
       </section>
     </div>

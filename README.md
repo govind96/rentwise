@@ -1,69 +1,60 @@
-# RentWise OS — AI-native property operations
+# RentWise OS — production property operations
 
-An owner-first workspace for Indian PGs and hostels: rooms and beds, tenant ledger
-(security + prorated first month + monthly rent cycles), receipts, maintenance,
-documents — with an always-available copilot. Runs on Cloudflare Workers + D1.
+RentWise is an owner-first operating system for Indian PGs, hostels and
+co-living properties. It runs on Cloudflare Workers with D1 for structured
+records and R2 for private resident documents.
+
+## Product coverage
+
+- Multi-property setup with flexible room and bed layouts
+- Owner-scoped access through Sites authentication
+- Resident onboarding, bed allotment, notices and checkout
+- Idempotent charge generation for deposits, prorated move-ins and monthly rent
+- Split-payment ledger, numbered receipts, WhatsApp-ready reminders and void audit trail
+- Booking pipeline, operating expenses and profitability view
+- Maintenance work orders and status tracking
+- Consent-aware private document uploads, review and download
+- CSV ledger/resident exports plus a complete owner JSON export
+- Audit events, health endpoint, legal notices and production security headers
+
+Payment records are internal ledger entries; RentWise does not move money.
+Document review is not government KYC or Aadhaar authentication. Aadhaar copies
+must be masked before upload.
 
 ## Local development
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:3000
+pnpm dev
 ```
 
-- `/` marketing landing page
-- `/dashboard` seeded interactive owner workspace, no login needed
-- `/login` explains the MVP access model and links to the demo
+Open `/signin-with-chatgpt?return_to=/dashboard` once to activate the simulated
+local owner. The development identity is provided by the Sites plugin and is
+never included in production builds.
 
-The public demo stores changes in the visitor's browser, so one visitor cannot
-change what another visitor sees. D1-backed owner APIs are scaffolded for the
-next phase but stay inaccessible until verified authentication is enabled.
-
-## Configuration
-
-`.openai/hosting.json` wires local bindings:
-
-```json
-{ "d1": "DB", "r2": null }
-```
-
-Secrets for the later authenticated owner beta:
-
-| Secret | Purpose |
-|---|---|
-| `SESSION_SECRET` | HMAC key for session cookies. Authentication refuses to run without a 32+ character value. |
-| `RESEND_API_KEY` | (future) transactional email for magic links and reminders |
-
-## Deploy to Cloudflare
+Useful checks:
 
 ```bash
-wrangler d1 create rentwise          # once; note the database_id
-wrangler d1 execute rentwise --remote --command "SELECT 1"   # smoke test
-wrangler secret put SESSION_SECRET   # openssl rand -hex 32
-wrangler deploy
+pnpm db:generate
+pnpm lint
+pnpm build
 ```
 
-The Vite Cloudflare plugin reads the same bindings in production; make sure the
-`d1` binding name (`DB`) matches `hosting.json`.
+## Storage and deployment
 
-## Architecture notes
+`.openai/hosting.json` declares logical `DB` (D1) and `FILES` (R2) bindings.
+Sites provisions and connects the hosted resources and applies the migrations
+in `drizzle/`. Do not put resource IDs or credentials in the repository.
 
-- **Frontend**: React 19 + RSC via vinext (Next-compatible app router on Vite).
-  Styling is hand-written CSS in `app/globals.css` — warm editorial theme,
-  Fraunces + Plus Jakarta Sans + DM Mono, one violet accent.
-- **Ledger**: every tenancy gets charges (`security`, `prorated_rent`, then one
-  `monthly_rent` per period from the month after allotment). Payments are credits;
-  the server allocates them oldest-due-first (waterfall) and returns per-tenant
-  balance + current-month status. Charges are idempotent (`UNIQUE(tenancy_id, kind, period)`),
-  so loading a property safely regenerates missing months.
-- **Auth**: intentionally disabled for phase one. Email-only access is not treated
-  as authentication; verified sign-in will be introduced with the owner beta.
-- **Demo mode**: `/dashboard` uses seeded data and persists to local browser
-  storage, keeping the public experience interactive and isolated per visitor.
+The app trusts only the authenticated identity headers supplied by Sites. All
+data queries and mutations verify owner scope server-side. Cross-site browser
+mutations are rejected, uploaded files are type/size checked, and payments use
+idempotency keys so retries cannot create duplicate receipts.
 
-## Beta scope & known limits
+## Launch operations
 
-- One session revocation model only (sign-out clears the cookie).
-- Maintenance requests and document status are stored client-side for real owners.
-- No file uploads yet (R2 binding reserved); KYC is a tracked status flag.
-- The copilot answers from live workspace data using intent matching.
+Before opening access to customers, confirm the deployment access policy,
+support and grievance contact, data-retention policy, backups, uptime alerting,
+and the state/city-specific accommodation and police-verification requirements
+for the intended market. Payment gateway automation should be added only with
+server-side signature verification and idempotent webhook processing.

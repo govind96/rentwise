@@ -1,11 +1,12 @@
 'use client';
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import BrandMark from '../components/BrandMark';
 import ThemeToggle from '../components/ThemeToggle';
 import PropertyOnboarding, { PropertyDraft, PropertyPreset, roomOccupancies } from './onboarding';
 
-type View = 'overview' | 'property' | 'tenants' | 'rent' | 'maintenance' | 'documents';
+type View = 'overview' | 'property' | 'tenants' | 'rent' | 'bookings' | 'finance' | 'maintenance' | 'documents';
 type Tenant = {
   id: number; room: string; bed: string; name: string; allotment: string;
   rent: number; security: number; firstMonthRent: number; received: number;
@@ -27,18 +28,93 @@ type WorkOrder = {
   id: number; title: string; room: string; tenant: string; category: string;
   priority: 'urgent' | 'normal' | 'low'; status: 'new' | 'in-progress' | 'resolved'; opened: string;
 };
+type Booking = {
+  id: number; name: string; phone: string; moveIn: string; sharing: string;
+  quotedRent: number; token: number; source: string; status: 'enquiry' | 'visit' | 'confirmed' | 'checked-in' | 'cancelled';
+};
+type Expense = {
+  id: number; category: 'Utilities' | 'Maintenance' | 'Food' | 'Salary' | 'Supplies' | 'Tax' | 'Other';
+  amount: number; date: string; vendor: string; note: string;
+};
+type ExitNotice = {
+  id: number; tenantId: number; tenantName: string; room: string; givenOn: string; vacateOn: string;
+  depositStatus: 'review' | 'ready' | 'refunded'; status: 'open' | 'completed';
+};
+type TenantDocument = {
+  id: number; tenancyId: number; kind: string; label: string; originalName?: string | null;
+  contentType?: string | null; sizeBytes?: number | null; status: 'requested' | 'uploaded' | 'verified' | 'rejected' | 'expired'; expiresOn?: string | null;
+};
 type RealBed = { id: number; room: string; bed: string; rent: number; status: 'vacant' | 'occupied' };
 type RoomInventory = [string, string[]][];
-type PortfolioProperty = PropertyInfo & { inventory: RoomInventory; tenants: Tenant[]; orders: WorkOrder[] };
+type PortfolioProperty = PropertyInfo & {
+  inventory: RoomInventory; tenants: Tenant[]; orders: WorkOrder[];
+  bookings?: Booking[]; expenses?: Expense[]; exitNotices?: ExitNotice[];
+};
 
 const money = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 const shortMoney = (value: number) => value >= 100000 ? `₹${(value / 100000).toFixed(1)}L` : `₹${Math.round(value / 1000)}k`;
+
+async function apiRequest(url: string, init: RequestInit = {}) {
+  const response = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...(init.headers ?? {}) } });
+  const data = await response.json().catch(() => ({})) as { error?: string };
+  if (!response.ok) throw new Error(data.error || 'The request could not be completed');
+  return data;
+}
+
+/** WhatsApp deep-link with a prefilled, friendly rent reminder — null when no usable phone. */
+function waLink(tenant: Tenant, propertyName: string, balance: number): string | null {
+  const digits = (tenant.phone ?? '').replace(/\D/g, '');
+  if (digits.length < 10) return null;
+  const message = `Hi ${tenant.name.split(' ')[0]}, a gentle reminder from ${propertyName}: ${money.format(balance)} is pending for Room ${tenant.room}, Bed ${tenant.bed}. UPI works fine — thank you!`;
+  return `https://wa.me/91${digits.slice(-10)}?text=${encodeURIComponent(message)}`;
+}
+
+/** Open a printable, self-contained receipt document for one payment. */
+function printReceipt(tenant: Tenant, propertyName: string, receipt: { amount: number; date: string; mode: string; note: string }, balance: number) {
+  const win = window.open('', 'rentwise-receipt', 'width=760,height=900');
+  if (!win) return;
+  const esc = (value: string | number) => String(value).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch] ?? ch));
+  const rows: [string, string][] = [
+    ['Receipt no', `RW-${Math.abs(receipt.amount * 7 + tenant.id * 13) % 100000}`],
+    ['Received from', esc(tenant.name)],
+    ['Room / Bed', `Room ${esc(tenant.room)} · Bed ${esc(tenant.bed)}`],
+    ['Amount received', money.format(receipt.amount)],
+    ['Received on', esc(receipt.date)],
+    ['Payment mode', esc(receipt.mode)],
+    ...(receipt.note ? [['Reference', esc(receipt.note)] as [string, string]] : []),
+    ['Ledger balance', balance > 0 ? money.format(balance) : '₹0 — Settled'],
+  ];
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt · ${esc(tenant.name)}</title><style>
+    body{font-family:ui-sans-serif,system-ui,'Segoe UI',Arial,sans-serif;margin:0;padding:44px;color:#141626;background:#f4f5fa}
+    .sheet{max-width:560px;margin:0 auto;background:#fff;border:1px solid #e4e6f0;border-radius:16px;padding:36px 40px}
+    .brand{display:flex;align-items:center;gap:11px;font-weight:700;font-size:17px}
+    .brand i{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#6a52ff,#8b5cf6);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:15px}
+    .brand em{margin-left:auto;font-style:normal;font:600 10px/1 ui-monospace,monospace;letter-spacing:.14em;color:#8a90ac;text-transform:uppercase}
+    h1{font-size:22px;margin:24px 0 4px;letter-spacing:-.02em}
+    .muted{color:#6b7190;font-size:13px;margin:0}
+    table{width:100%;border-collapse:collapse;margin-top:22px}
+    td{padding:11px 0;border-bottom:1px solid #eef0f7;font-size:13.5px;vertical-align:top}
+    td:first-child{color:#6b7190;width:44%}
+    td:last-child{font-weight:600;text-align:right}
+    .foot{margin-top:26px;font-size:11px;color:#8a90ac;text-align:center}
+    @media print{body{padding:0;background:#fff}.sheet{border:none}}
+  </style></head><body><div class="sheet">
+    <div class="brand"><i>₹</i>${esc(propertyName)}<em>Receipt</em></div>
+    <h1>${money.format(receipt.amount)} received</h1>
+    <p class="muted">Thank you, ${esc(tenant.name.split(' ')[0])} — this receipt confirms your payment.</p>
+    <table>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
+    <p class="foot">Computer-generated receipt · ${esc(propertyName)} · RentWise OS</p>
+  </div><script>window.onload=function(){window.print()}<\/script></body></html>`);
+  win.document.close();
+}
 
 const NAV_ICONS: Record<View, string[]> = {
   overview: ['m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 22v-8h6v8'],
   property: ['M3 3h7v7H3z', 'M14 3h7v7h-7z', 'M14 14h7v7h-7z', 'M3 14h7v7H3z'],
   tenants: ['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'M22 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75'],
   rent: ['M6 3h12', 'M6 8h12', 'm6 13 8.5 8', 'M6 13h3', 'M9 13c6.667 0 6.667-10 0-10'],
+  bookings: ['M8 2v4', 'M16 2v4', 'M3 10h18', 'M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z', 'm8 15 2 2 5-5'],
+  finance: ['M3 3v18h18', 'm7 15 3-3 3 2 5-6', 'M7 7h.01'],
   documents: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z', 'M14 2v6h6', 'M16 13H8', 'M16 17H8'],
   maintenance: ['M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'],
 };
@@ -78,6 +154,21 @@ const seededOrders: WorkOrder[] = [
   { id: 3, title: 'Door latch needs replacement', room: '14', tenant: 'Kajal Kumari', category: 'Carpentry', priority: 'low', status: 'new', opened: '20 Aug' },
 ];
 
+const seededBookings: Booking[] = [
+  { id: 1, name: 'Ishita Verma', phone: '9876543281', moveIn: '2026-09-01', sharing: 'Double sharing', quotedRent: 3500, token: 1000, source: 'WhatsApp', status: 'confirmed' },
+  { id: 2, name: 'Riya Singh', phone: '9876543282', moveIn: '2026-09-05', sharing: 'Triple sharing', quotedRent: 3000, token: 0, source: 'Walk-in', status: 'visit' },
+];
+
+const seededExpenses: Expense[] = [
+  { id: 1, category: 'Utilities', amount: 8420, date: '2026-08-18', vendor: 'BESCOM', note: 'Electricity bill' },
+  { id: 2, category: 'Food', amount: 12600, date: '2026-08-16', vendor: 'FreshKart Wholesale', note: 'Monthly provisions' },
+  { id: 3, category: 'Maintenance', amount: 1850, date: '2026-08-12', vendor: 'Local plumber', note: 'Pump and fittings' },
+];
+
+const seededNotices: ExitNotice[] = [
+  { id: 1, tenantId: 6, tenantName: 'Pragya Kumari', room: '12', givenOn: '2026-08-18', vacateOn: '2026-09-17', depositStatus: 'review', status: 'open' },
+];
+
 const seededInventory: RoomInventory = [
   ['1', ['A', 'B']], ['2', ['A', 'B']], ['3', ['A', 'B']], ['11', ['A', 'B']], ['12', ['A', 'B']], ['13', ['A', 'B']],
   ['14', ['A', 'B', 'C']], ['15', ['A', 'B']], ['21', ['A', 'B']], ['22', ['A', 'B']], ['23', ['A', 'B']], ['24', ['A', 'B', 'C']], ['25', ['A', 'B']],
@@ -89,6 +180,7 @@ const seededProperty: PortfolioProperty = {
   rentDueDay: 5, graceDays: 3, lateFee: 250, floors: 3, mealPlan: 'Included', electricityPlan: 'Metered separately',
   climatePlan: 'Mixed AC & non-AC', bathroomPlan: 'Mixed', noticeDays: 30, agreementRequired: true, verificationRequired: true,
   inventory: seededInventory, tenants: seededTenants, orders: seededOrders,
+  bookings: seededBookings, expenses: seededExpenses, exitNotices: seededNotices,
 };
 
 const PORTFOLIO_STORAGE_KEY = 'rentwise-portfolio-v1';
@@ -177,6 +269,8 @@ const viewCopy: Record<View, { eyebrow: string; title: string; subtitle: string 
   rent: { eyebrow: 'Money', title: 'Rent & collections', subtitle: 'Know what came in, what is pending and who needs a reminder.' },
   maintenance: { eyebrow: 'Operations', title: 'Maintenance desk', subtitle: 'Track issues from first report to completed repair.' },
   documents: { eyebrow: 'Tenant records', title: 'Documents & agreements', subtitle: 'Keep identity proofs, rental agreements and follow-ups together.' },
+  bookings: { eyebrow: 'Move-ins & exits', title: 'Booking pipeline', subtitle: 'Turn enquiries into occupied beds and manage every planned checkout.' },
+  finance: { eyebrow: 'Business', title: 'Expenses & profitability', subtitle: 'See the operating picture beyond collections, with clean monthly records.' },
 };
 
 export default function DashboardPage() {
@@ -184,13 +278,19 @@ export default function DashboardPage() {
 }
 
 function Workspace() {
-  const demo = true;
+  const demo = false;
+  const [access, setAccess] = useState<'loading' | 'ready' | 'signed-out' | 'error'>('loading');
+  const [owner, setOwner] = useState<{ name: string; email: string } | null>(null);
   const [view, setView] = useState<View>('overview');
   const [tenants, setTenants] = useState<Tenant[]>(demo ? seededTenants : []);
   const [orders, setOrders] = useState<WorkOrder[]>(demo ? seededOrders : []);
+  const [bookings, setBookings] = useState<Booking[]>(demo ? seededBookings : []);
+  const [expenses, setExpenses] = useState<Expense[]>(demo ? seededExpenses : []);
+  const [exitNotices, setExitNotices] = useState<ExitNotice[]>(demo ? seededNotices : []);
+  const [documents, setDocuments] = useState<TenantDocument[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'paid'>('all');
-  const [modal, setModal] = useState<'tenant' | 'payment' | 'maintenance' | null>(null);
+  const [modal, setModal] = useState<'tenant' | 'payment' | 'maintenance' | 'booking' | 'expense' | 'notice' | 'document' | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [drawerId, setDrawerId] = useState<number | null>(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
@@ -199,8 +299,8 @@ function Workspace() {
   const [draftDate, setDraftDate] = useState(todayISO());
   const [property, setProperty] = useState<PropertyInfo | null>(seededProperty);
   const [properties, setProperties] = useState<PropertyInfo[]>([seededProperty]);
-  const [portfolio, setPortfolio] = useState<PortfolioProperty[]>([seededProperty]);
-  const [activePropertyId, setActivePropertyId] = useState<number | null>(seededProperty.id);
+  const [portfolio, setPortfolio] = useState<PortfolioProperty[]>(demo ? [seededProperty] : []);
+  const [activePropertyId, setActivePropertyId] = useState<number | null>(demo ? seededProperty.id : null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [propEditOpen, setPropEditOpen] = useState(false);
   const [propertyOnboardingOpen, setPropertyOnboardingOpen] = useState(false);
@@ -242,16 +342,20 @@ function Workspace() {
     const suffix = propertyId ? `?propertyId=${propertyId}` : '';
     fetch(`/api/properties${suffix}`)
       .then((response) => response.ok ? response.json() as Promise<{
-        properties: PropertyInfo[]; property: PropertyInfo | null; beds: RealBed[];
+        properties: PropertyInfo[]; property: PropertyInfo | null; beds: RealBed[]; orders: WorkOrder[]; bookings: Booking[]; expenses: Expense[]; exitNotices: ExitNotice[]; documents: TenantDocument[];
         tenants: { id: number; room: string; bed: string; name: string; phone: string | null; allotment: string;
           rent: number; security: number; firstMonthRent: number; received: number;
           chargesTotal?: number; balance?: number; monthly?: Tenant['monthly'];
           payments?: { id: number; amount: number; date: string; mode: string; note: string }[];
         }[];
-      }> : null)
+      }> : response.status === 401 ? (setAccess('signed-out'), null) : Promise.reject(new Error('Workspace could not be loaded')))
       .then((data) => {
         if (!data) return;
-        if (!data.property) return;
+        setProperties(data.properties);
+        if (!data.property) {
+          setProperty(null); setActivePropertyId(null); setTenants([]); setOrders([]); setBookings([]); setExpenses([]); setExitNotices([]); setDocuments([]); setRealBeds([]);
+          setPropertyOnboardingOpen(true); setAccess('ready'); return;
+        }
         setProperties(data.properties);
         setProperty(data.property);
         setActivePropertyId(data.property.id);
@@ -266,13 +370,30 @@ function Workspace() {
           status: (row.balance != null ? row.balance <= 0 : row.received >= row.security + row.firstMonthRent) ? 'paid' as const : 'partial' as const,
           kyc: 'pending' as const,
         })));
-        setOrders([]);
+        setOrders(data.orders ?? []); setBookings(data.bookings ?? []); setExpenses(data.expenses ?? []); setExitNotices(data.exitNotices ?? []); setDocuments(data.documents ?? []);
+        setAccess('ready');
       })
-      .catch(() => showToast('Could not refresh the workspace'));
+      .catch(() => { setAccess('error'); showToast('Could not refresh the workspace'); });
   }
 
   useEffect(() => {
+    fetch('/api/auth/me', { cache: 'no-store' }).then(async (response) => {
+      if (!response.ok) { setAccess(response.status === 401 ? 'signed-out' : 'error'); return; }
+      const profile = await response.json() as { name?: string; email: string };
+      setOwner({ name: profile.name || profile.email.split('@')[0], email: profile.email });
+      loadRealData();
+    }).catch(() => setAccess('error'));
+  // The initial owner bootstrap intentionally runs once; refreshes are triggered after mutations.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo]);
+
+  useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
+      if (!demo) {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('newProperty') === '1') setPropertyOnboardingOpen(true);
+        return;
+      }
       try {
         const saved = JSON.parse(window.localStorage.getItem(PORTFOLIO_STORAGE_KEY) ?? 'null') as { portfolio?: unknown[]; activePropertyId?: number } | null;
         const savedPortfolio = saved?.portfolio?.filter(isPortfolioProperty) ?? [];
@@ -280,6 +401,7 @@ function Workspace() {
           const active = savedPortfolio.find((item) => item.id === saved?.activePropertyId) ?? savedPortfolio[0];
           setPortfolio(savedPortfolio); setProperties(savedPortfolio); setProperty(active); setActivePropertyId(active.id);
           setTenants(active.tenants); setOrders(active.orders); setDemoInventory(active.inventory);
+          setBookings(active.bookings ?? []); setExpenses(active.expenses ?? []); setExitNotices(active.exitNotices ?? []);
           setDraftRent(active.defaultRent ?? 3000);
         }
         const params = new URLSearchParams(window.location.search);
@@ -294,7 +416,7 @@ function Workspace() {
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, []);
+  }, [demo]);
 
   useEffect(() => {
     const onShortcut = (event: KeyboardEvent) => {
@@ -337,7 +459,13 @@ function Workspace() {
 
   function showToast(message: string) { setToast(message); window.setTimeout(() => setToast(''), 2600); }
   function persistState(nextTenants = tenants, nextOrders = orders, nextInventory = demoInventory) {
-    const nextPortfolio = portfolio.map((item) => item.id === activePropertyId ? { ...item, tenants: nextTenants, orders: nextOrders, inventory: nextInventory } : item);
+    const nextPortfolio = portfolio.map((item) => item.id === activePropertyId ? { ...item, tenants: nextTenants, orders: nextOrders, inventory: nextInventory, bookings, expenses, exitNotices } : item);
+    setPortfolio(nextPortfolio); setProperties(nextPortfolio);
+    try { window.localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify({ portfolio: nextPortfolio, activePropertyId })); }
+    catch { showToast('This browser could not save the demo change'); }
+  }
+  function persistOperations(nextBookings = bookings, nextExpenses = expenses, nextNotices = exitNotices) {
+    const nextPortfolio = portfolio.map((item) => item.id === activePropertyId ? { ...item, tenants, orders, inventory: demoInventory, bookings: nextBookings, expenses: nextExpenses, exitNotices: nextNotices } : item);
     setPortfolio(nextPortfolio); setProperties(nextPortfolio);
     try { window.localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify({ portfolio: nextPortfolio, activePropertyId })); }
     catch { showToast('This browser could not save the demo change'); }
@@ -345,7 +473,7 @@ function Workspace() {
 
   function openPropertyOnboarding() { setSwitcherOpen(false); setPropertyPreset('classic-pg'); setPropertyOnboardingOpen(true); }
   function downloadPortfolioBackup() {
-    const latestPortfolio = portfolio.map((item) => item.id === activePropertyId ? { ...item, tenants, orders, inventory: demoInventory } : item);
+    const latestPortfolio = portfolio.map((item) => item.id === activePropertyId ? { ...item, tenants, orders, inventory: demoInventory, bookings, expenses, exitNotices } : item);
     const payload = JSON.stringify({ format: 'rentwise-portfolio', version: 1, exportedAt: new Date().toISOString(), activePropertyId, portfolio: latestPortfolio }, null, 2);
     const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
     const link = document.createElement('a');
@@ -366,6 +494,7 @@ function Workspace() {
       const active = restored.find((item) => item.id === data.activePropertyId) ?? restored[0];
       setPortfolio(restored); setProperties(restored); setProperty(active); setActivePropertyId(active.id);
       setTenants(active.tenants); setOrders(active.orders); setDemoInventory(active.inventory); setDraftRent(active.defaultRent ?? 3000);
+      setBookings(active.bookings ?? []); setExpenses(active.expenses ?? []); setExitNotices(active.exitNotices ?? []);
       setSwitcherOpen(false); setView('overview');
       window.localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify({ portfolio: restored, activePropertyId: active.id }));
       showToast(`${restored.length} ${restored.length === 1 ? 'property' : 'properties'} restored from backup`);
@@ -376,21 +505,28 @@ function Workspace() {
     }
   }
   function createProperty(draft: PropertyDraft) {
-    const id = Math.max(...portfolio.map((item) => item.id), 0) + 1;
     const plannedRooms = roomOccupancies(draft);
+    if (!demo) {
+      setPropertyOnboardingOpen(false); showToast('Creating your property…');
+      void apiRequest('/api/properties', { method: 'POST', body: JSON.stringify({ ...draft, roomOccupancies: plannedRooms }) })
+        .then((result) => { const created = result as { propertyId?: number }; showToast(`${draft.name} is ready`); loadRealData(created.propertyId); })
+        .catch((error: Error) => { setPropertyOnboardingOpen(true); showToast(error.message); });
+      return;
+    }
+    const id = Math.max(...portfolio.map((item) => item.id), 0) + 1;
     const nextInventory: RoomInventory = plannedRooms.map((bedCount, roomIndex) => [String(draft.startingRoom + roomIndex), Array.from({ length: bedCount }, (_, bedIndex) => String.fromCharCode(65 + bedIndex))]);
-    const currentPortfolio = portfolio.map((item) => item.id === activePropertyId ? { ...item, tenants, orders, inventory: demoInventory } : item);
+    const currentPortfolio = portfolio.map((item) => item.id === activePropertyId ? { ...item, tenants, orders, inventory: demoInventory, bookings, expenses, exitNotices } : item);
     const created: PortfolioProperty = {
       id, name: draft.name, address: draft.address, city: draft.city, type: draft.type, audience: draft.audience,
       amenities: draft.amenities, defaultRent: draft.rent, defaultSecurity: draft.security, rentDueDay: draft.rentDueDay,
       graceDays: draft.graceDays, lateFee: draft.lateFee, floors: draft.floors, mealPlan: draft.mealPlan,
       electricityPlan: draft.electricityPlan, climatePlan: draft.climatePlan, bathroomPlan: draft.bathroomPlan,
       noticeDays: draft.noticeDays, agreementRequired: draft.agreementRequired, verificationRequired: draft.verificationRequired,
-      inventory: nextInventory, tenants: [], orders: [],
+      inventory: nextInventory, tenants: [], orders: [], bookings: [], expenses: [], exitNotices: [],
     };
     const nextPortfolio = [...currentPortfolio, created];
     setPortfolio(nextPortfolio); setProperties(nextPortfolio); setProperty(created); setActivePropertyId(id);
-    setTenants([]); setOrders([]); setDemoInventory(nextInventory); setDraftRent(draft.rent);
+    setTenants([]); setOrders([]); setBookings([]); setExpenses([]); setExitNotices([]); setDemoInventory(nextInventory); setDraftRent(draft.rent);
     setPropertyOnboardingOpen(false); setView('property');
     try { window.localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify({ portfolio: nextPortfolio, activePropertyId: id })); } catch { /* UI remains usable for this session */ }
     showToast(`${draft.name} is ready — ${plannedRooms.length} rooms and ${plannedRooms.reduce((sum, beds) => sum + beds, 0)} beds created`);
@@ -404,7 +540,7 @@ function Workspace() {
     setModal(null); showToast('Tenant added and dues created');
     if (!demo && property) {
       const bedRecord = realBeds.find((candidate) => candidate.room === room && candidate.bed === bed && candidate.status === 'vacant');
-      if (bedRecord) void fetch('/api/tenancies', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bedId: bedRecord.id, name, phone, allotment, rent, security, firstMonthRent: firstMonth }) }).then(() => loadRealData(activePropertyId));
+      if (bedRecord) void apiRequest('/api/tenancies', { method: 'POST', body: JSON.stringify({ bedId: bedRecord.id, name, phone, allotment, rent, security, firstMonthRent: firstMonth }) }).then(() => loadRealData(activePropertyId)).catch((error: Error) => showToast(error.message));
       else showToast('That bed was just taken — refresh and pick another');
       return;
     }
@@ -417,21 +553,32 @@ function Workspace() {
     const amount = Number(data.get('amount'));
     setModal(null); showToast(`${money.format(amount)} receipt recorded`);
     if (!demo && selectedId != null) {
-      void fetch('/api/payments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tenancyId: selectedId, amount, paidOn: String(data.get('date') || ''), mode: String(data.get('mode') || 'UPI'), reference: String(data.get('reference') || '') }) })
+      void apiRequest('/api/payments', { method: 'POST', body: JSON.stringify({ tenancyId: selectedId, amount, paidOn: String(data.get('date') || ''), mode: String(data.get('mode') || 'UPI'), reference: String(data.get('reference') || ''), idempotencyKey: crypto.randomUUID() }) })
         .then(() => { showToast(`${money.format(amount)} saved to your ledger`); loadRealData(activePropertyId); })
-        .catch(() => showToast('Could not reach the server — try again'));
+        .catch((error: Error) => showToast(error.message));
       return;
     }
     const next = tenants.map((tenant) => tenant.id === selectedId ? { ...tenant, received: tenant.received + amount, status: tenant.received + amount >= dueFor(tenant) ? 'paid' as const : 'partial' as const } : tenant);
     setTenants(next); persistState(next, orders);
   }
   function updateOrder(id: number) {
+    if (!demo && activePropertyId) {
+      void apiRequest('/api/operations', { method: 'PATCH', body: JSON.stringify({ action: 'work_order_status', propertyId: activePropertyId, id }) })
+        .then(() => { showToast('Maintenance status updated'); loadRealData(activePropertyId); }).catch((error: Error) => showToast(error.message));
+      return;
+    }
     const next = orders.map((order) => order.id === id ? { ...order, status: order.status === 'new' ? 'in-progress' as const : 'resolved' as const } : order);
     setOrders(next); persistState(tenants, next); showToast('Maintenance status updated');
   }
   function addMaintenance(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    if (!demo && activePropertyId) {
+      setModal(null);
+      void apiRequest('/api/operations', { method: 'POST', body: JSON.stringify({ action: 'work_order', propertyId: activePropertyId, title: data.get('title'), room: data.get('room'), category: data.get('category'), priority: data.get('priority') }) })
+        .then(() => { showToast('Maintenance request created'); loadRealData(activePropertyId); }).catch((error: Error) => showToast(error.message));
+      return;
+    }
     const next: WorkOrder[] = [{
       id: Math.max(...orders.map((order) => order.id), 0) + 1,
       title: String(data.get('title')).trim(), room: String(data.get('room')).trim(),
@@ -439,6 +586,102 @@ function Workspace() {
       priority: String(data.get('priority')) as WorkOrder['priority'], status: 'new', opened: 'Just now',
     }, ...orders];
     setOrders(next); persistState(tenants, next); setModal(null); showToast('Maintenance request created');
+  }
+  function addBooking(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    if (!demo && activePropertyId) {
+      setModal(null);
+      void apiRequest('/api/operations', { method: 'POST', body: JSON.stringify({ action: 'booking', propertyId: activePropertyId, name: data.get('name'), phone: data.get('phone'), moveIn: data.get('moveIn'), sharing: data.get('sharing'), quotedRent: data.get('rent'), token: data.get('token'), source: data.get('source') }) })
+        .then(() => { showToast('Booking enquiry added'); loadRealData(activePropertyId); }).catch((error: Error) => showToast(error.message));
+      return;
+    }
+    const next: Booking[] = [{
+      id: Math.max(...bookings.map((item) => item.id), 0) + 1,
+      name: String(data.get('name')).trim(), phone: String(data.get('phone')).replace(/\D/g, '').slice(-10),
+      moveIn: String(data.get('moveIn')), sharing: String(data.get('sharing')), quotedRent: Math.max(0, Number(data.get('rent'))),
+      token: Math.max(0, Number(data.get('token'))), source: String(data.get('source')), status: 'enquiry',
+    }, ...bookings];
+    setBookings(next); persistOperations(next, expenses, exitNotices); setModal(null); showToast('Booking enquiry added');
+  }
+  function advanceBooking(id: number) {
+    if (!demo && activePropertyId) {
+      const booking = bookings.find((item) => item.id === id); if (!booking) return;
+      const status = booking.status === 'enquiry' ? 'visit' : booking.status === 'visit' ? 'confirmed' : 'checked-in';
+      void apiRequest('/api/operations', { method: 'PATCH', body: JSON.stringify({ action: 'booking_status', propertyId: activePropertyId, id, status }) })
+        .then(() => { showToast('Booking status updated'); loadRealData(activePropertyId); }).catch((error: Error) => showToast(error.message));
+      return;
+    }
+    const next = bookings.map((item) => item.id === id ? { ...item, status: (item.status === 'enquiry' ? 'visit' : item.status === 'visit' ? 'confirmed' : item.status === 'confirmed' ? 'checked-in' : item.status) as Booking['status'] } : item);
+    setBookings(next); persistOperations(next, expenses, exitNotices); showToast('Booking status updated');
+  }
+  function cancelBooking(id: number) {
+    if (!demo && activePropertyId) {
+      void apiRequest('/api/operations', { method: 'PATCH', body: JSON.stringify({ action: 'booking_status', propertyId: activePropertyId, id, status: 'cancelled' }) })
+        .then(() => { showToast('Booking marked cancelled'); loadRealData(activePropertyId); }).catch((error: Error) => showToast(error.message));
+      return;
+    }
+    const next = bookings.map((item) => item.id === id ? { ...item, status: 'cancelled' as const } : item);
+    setBookings(next); persistOperations(next, expenses, exitNotices); showToast('Booking marked cancelled');
+  }
+  function addExpense(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    if (!demo && activePropertyId) {
+      setModal(null);
+      void apiRequest('/api/operations', { method: 'POST', body: JSON.stringify({ action: 'expense', propertyId: activePropertyId, category: data.get('category'), amount: data.get('amount'), date: data.get('date'), vendor: data.get('vendor'), note: data.get('note') }) })
+        .then(() => { showToast('Expense saved'); loadRealData(activePropertyId); }).catch((error: Error) => showToast(error.message));
+      return;
+    }
+    const next: Expense[] = [{
+      id: Math.max(...expenses.map((item) => item.id), 0) + 1,
+      category: String(data.get('category')) as Expense['category'], amount: Math.max(0, Number(data.get('amount'))),
+      date: String(data.get('date')), vendor: String(data.get('vendor')).trim(), note: String(data.get('note')).trim(),
+    }, ...expenses];
+    setExpenses(next); persistOperations(bookings, next, exitNotices); setModal(null); showToast('Expense saved');
+  }
+  function addExitNotice(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget); const tenantId = Number(data.get('tenant'));
+    const tenant = tenants.find((item) => item.id === tenantId); if (!tenant) return;
+    if (!demo && activePropertyId) {
+      setModal(null);
+      void apiRequest('/api/operations', { method: 'POST', body: JSON.stringify({ action: 'notice', propertyId: activePropertyId, tenancyId: tenantId, givenOn: data.get('givenOn'), vacateOn: data.get('vacateOn') }) })
+        .then(() => { showToast('Exit notice scheduled'); loadRealData(activePropertyId); }).catch((error: Error) => showToast(error.message));
+      return;
+    }
+    const next: ExitNotice[] = [{ id: Math.max(...exitNotices.map((item) => item.id), 0) + 1, tenantId, tenantName: tenant.name, room: tenant.room, givenOn: String(data.get('givenOn')), vacateOn: String(data.get('vacateOn')), depositStatus: 'review', status: 'open' }, ...exitNotices];
+    setExitNotices(next); persistOperations(bookings, expenses, next); setModal(null); showToast('Exit notice scheduled');
+  }
+  function advanceNotice(id: number) {
+    if (!demo && activePropertyId) {
+      const notice = exitNotices.find((item) => item.id === id); if (!notice) return;
+      if (notice.depositStatus === 'review') {
+        const next = exitNotices.map((item) => item.id === id ? { ...item, depositStatus: 'ready' as const } : item);
+        setExitNotices(next); showToast('Deposit is ready for final settlement'); return;
+      }
+      if (!window.confirm('Complete checkout, mark the deposit refunded and release this bed?')) return;
+      void apiRequest('/api/operations', { method: 'PATCH', body: JSON.stringify({ action: 'complete_notice', propertyId: activePropertyId, id: notice.tenantId, depositRefunded: true }) })
+        .then(() => { showToast('Checkout completed'); loadRealData(activePropertyId); }).catch((error: Error) => showToast(error.message));
+      return;
+    }
+    const next = exitNotices.map((item) => item.id === id ? item.depositStatus === 'review' ? { ...item, depositStatus: 'ready' as const } : { ...item, depositStatus: 'refunded' as const, status: 'completed' as const } : item);
+    setExitNotices(next); persistOperations(bookings, expenses, next); showToast('Exit checklist updated');
+  }
+  function uploadDocument(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    form.set('consent', form.get('consent') ? 'true' : 'false');
+    setModal(null); showToast('Uploading document securely…');
+    void fetch('/api/documents', { method: 'POST', body: form }).then(async (response) => {
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(data.error || 'Upload failed');
+      showToast('Document uploaded for review'); loadRealData(activePropertyId);
+    }).catch((error: Error) => showToast(error.message));
+  }
+  function reviewDocument(id: number, status: 'verified' | 'rejected') {
+    void apiRequest('/api/documents', { method: 'PATCH', body: JSON.stringify({ id, status }) })
+      .then(() => { showToast(`Document marked ${status}`); loadRealData(activePropertyId); }).catch((error: Error) => showToast(error.message));
   }
   function openPayment(id: number) { setSelectedId(id); setModal('payment'); }
   function goTo(next: View) { setView(next); setDrawerId(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }
@@ -450,26 +693,26 @@ function Workspace() {
     const target = nextPortfolio.find((item) => item.id === id);
     if (!target) return;
     setPortfolio(nextPortfolio); setProperties(nextPortfolio); setProperty(target); setActivePropertyId(id);
-    setTenants(target.tenants); setOrders(target.orders); setDemoInventory(target.inventory); setDraftRent(target.defaultRent ?? 3000); setView('overview');
+    setTenants(target.tenants); setOrders(target.orders); setBookings(target.bookings ?? []); setExpenses(target.expenses ?? []); setExitNotices(target.exitNotices ?? []); setDemoInventory(target.inventory); setDraftRent(target.defaultRent ?? 3000); setView('overview');
     try { window.localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify({ portfolio: nextPortfolio, activePropertyId: id })); } catch { /* Session state still works */ }
     showToast(`Switched to ${target.name}`);
   }
   function vacateTenant(id: number) {
     if (!window.confirm('Close this tenancy and free the bed? Their payment history stays in your ledger.')) return;
-    void fetch('/api/tenancies', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tenancyId: id, vacate: true }) })
+    void apiRequest('/api/tenancies', { method: 'PATCH', body: JSON.stringify({ tenancyId: id, vacate: true }) })
       .then(() => { setDrawerId(null); showToast('Tenancy closed — bed is vacant'); loadRealData(activePropertyId); })
-      .catch(() => showToast('Could not reach the server — try again'));
+      .catch((error: Error) => showToast(error.message));
   }
   function updateTenant(id: number, patch: { name?: string; phone?: string; rent?: number; security?: number }) {
-    void fetch('/api/tenancies', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tenancyId: id, ...patch }) })
+    void apiRequest('/api/tenancies', { method: 'PATCH', body: JSON.stringify({ tenancyId: id, ...patch }) })
       .then(() => { showToast('Tenant details updated'); loadRealData(activePropertyId); })
-      .catch(() => showToast('Could not reach the server — try again'));
+      .catch((error: Error) => showToast(error.message));
   }
   function voidReceipt(paymentId: number) {
     if (!window.confirm('Void this receipt? The balance will be recalculated.')) return;
-    void fetch('/api/payments', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ paymentId }) })
+    void apiRequest('/api/payments', { method: 'DELETE', body: JSON.stringify({ paymentId }) })
       .then(() => { showToast('Receipt voided'); loadRealData(activePropertyId); })
-      .catch(() => showToast('Could not reach the server — try again'));
+      .catch((error: Error) => showToast(error.message));
   }
   function savePropertyDetails(name: string, address: string) {
     if (!activePropertyId) return;
@@ -481,14 +724,18 @@ function Workspace() {
       showToast('Property details updated');
       return;
     }
-    void fetch('/api/properties', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ propertyId: activePropertyId, name, address }) })
+    void apiRequest('/api/properties', { method: 'PATCH', body: JSON.stringify({ propertyId: activePropertyId, name, address }) })
       .then(() => { setPropEditOpen(false); showToast('Property updated'); loadRealData(activePropertyId); })
-      .catch(() => showToast('Could not reach the server — try again'));
+      .catch((error: Error) => showToast(error.message));
   }
+
+  if (access === 'loading') return <div className="prod-auth-gate"><BrandMark /><span className="gate-spinner" /><h1>Opening your workspace</h1><p>Connecting your properties, residents and ledger…</p></div>;
+  if (access === 'signed-out') return <div className="prod-auth-gate"><BrandMark /><p className="overline">OWNER ACCESS</p><h1>Sign in to RentWise</h1><p>Your property and resident data is private to your account.</p><a className="main-button" href="/signin-with-chatgpt?return_to=/dashboard">Sign in securely →</a><Link className="quiet-button" href="/">Back to RentWise</Link></div>;
+  if (access === 'error') return <div className="prod-auth-gate"><BrandMark /><p className="overline">CONNECTION ISSUE</p><h1>We couldn’t open the workspace</h1><p>No changes were made. Check your connection and try again.</p><button className="main-button" onClick={() => window.location.reload()}>Try again</button></div>;
 
   return (
     <div className="shell">
-      <input ref={backupInputRef} className="file-input-hidden" type="file" accept="application/json,.json" aria-label="Restore portfolio backup" onChange={(event) => void restorePortfolioBackup(event)} />
+      {demo && <input ref={backupInputRef} className="file-input-hidden" type="file" accept="application/json,.json" aria-label="Restore portfolio backup" onChange={(event) => void restorePortfolioBackup(event)} />}
       <aside className="side">
         <button className="logo" onClick={() => goTo('overview')}><BrandMark /><strong>RentWise</strong><em>OS</em></button>
         <div className="prop-switch">
@@ -499,27 +746,28 @@ function Workspace() {
               {properties.map((item) => <button key={item.id} role="menuitem" className={item.id === activePropertyId ? 'prop-item active' : 'prop-item'} onClick={() => switchProperty(item.id)}><span>{propertyInitials(item.name)}</span><p><strong>{item.name}</strong><small>{item.address || 'No address yet'}</small></p>{item.id === activePropertyId && <b>✓</b>}</button>)}
               <div className="prop-divider" />
               <button role="menuitem" className="prop-item add" onClick={openPropertyOnboarding}><span>＋</span><p><strong>Add another property</strong><small>Build rooms, beds and rent defaults</small></p></button>
-              <button role="menuitem" className="prop-item backup" onClick={downloadPortfolioBackup}><span>⇩</span><p><strong>Download portfolio backup</strong><small>Keep a portable copy of this browser’s data</small></p></button>
-              <button role="menuitem" className="prop-item backup" onClick={() => { setSwitcherOpen(false); backupInputRef.current?.click(); }}><span>↥</span><p><strong>Restore portfolio backup</strong><small>Open a RentWise JSON backup on this device</small></p></button>
+              {!demo && <a role="menuitem" className="prop-item backup" href="/api/account/export"><span>⇩</span><p><strong>Download account export</strong><small>Properties, ledgers and audit history</small></p></a>}
+              {demo && <button role="menuitem" className="prop-item backup" onClick={downloadPortfolioBackup}><span>⇩</span><p><strong>Download portfolio backup</strong><small>Keep a portable copy of this browser’s data</small></p></button>}
+              {demo && <button role="menuitem" className="prop-item backup" onClick={() => { setSwitcherOpen(false); backupInputRef.current?.click(); }}><span>↥</span><p><strong>Restore portfolio backup</strong><small>Open a RentWise JSON backup on this device</small></p></button>}
             </div>
           </>}
         </div>
         <nav aria-label="Owner workspace">
           <p>WORKSPACE</p>
           {([
-            ['overview', 'Today'], ['property', 'Property'], ['tenants', 'Tenants'], ['rent', 'Rent & payments'], ['documents', 'Documents'], ['maintenance', 'Maintenance'],
+            ['overview', 'Today'], ['property', 'Property'], ['tenants', 'Tenants'], ['rent', 'Rent & payments'], ['bookings', 'Bookings & exits'], ['finance', 'Expenses'], ['documents', 'Documents'], ['maintenance', 'Maintenance'],
           ] as [View, string][]).map(([id, label]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => goTo(id)}><NavIcon paths={NAV_ICONS[id]} /><span>{label}</span>{id === 'rent' && <b>{tenants.filter((tenant) => balanceFor(tenant) > 0).length}</b>}{id === 'maintenance' && orders.length > 0 && <b>{orders.filter((order) => order.status !== 'resolved').length}</b>}</button>)}
         </nav>
-        <div className="side-bottom"><ThemeToggle /><div className="owner-chip"><span>SK</span><div><strong>Sample owner</strong><small>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</small></div><b>•••</b></div><p className="no-login">Public demo · Changes stay in this browser</p></div>
+        <div className="side-bottom"><ThemeToggle /><div className="owner-chip"><span>{propertyInitials(owner?.name ?? 'Owner')}</span><div><strong>{owner?.name ?? 'Property owner'}</strong><small>{properties.length} {properties.length === 1 ? 'property' : 'properties'}</small></div><b>•••</b></div><p className="no-login">Secure owner workspace · Autosaved</p></div>
       </aside>
 
       <div className="workspace">
         <div className="mobile-topbar"><button className="mobile-brand" onClick={() => goTo('overview')}><BrandMark /><strong>RentWise</strong></button><button className="mobile-lookup" onClick={() => { setFilter('all'); goTo('tenants'); }}><span>⌕</span><em>Search tenant or room</em></button><ThemeToggle compact /><button className="mobile-create" aria-label="Create new allotment" onClick={() => setModal('tenant')}>＋</button></div>
         <div className="mobile-property-switch">
           <button className="property-select" aria-expanded={switcherOpen} onClick={() => setSwitcherOpen((open) => !open)}><span className="property-thumb">{propertyInitials(property?.name ?? 'Saffron Stay PG')}</span><span><small>ACTIVE PROPERTY</small><strong>{property?.name ?? 'Saffron Stay PG'}</strong><em>{properties.length} {properties.length === 1 ? 'property' : 'properties'} in portfolio</em></span><b>⌄</b></button>
-          {switcherOpen && <><button className="prop-backdrop" aria-label="Close property menu" onClick={() => setSwitcherOpen(false)} /><div className="prop-menu" role="menu">{properties.map((item) => <button key={item.id} role="menuitem" className={item.id === activePropertyId ? 'prop-item active' : 'prop-item'} onClick={() => switchProperty(item.id)}><span>{propertyInitials(item.name)}</span><p><strong>{item.name}</strong><small>{item.address || 'No address yet'}</small></p>{item.id === activePropertyId && <b>✓</b>}</button>)}<div className="prop-divider" /><button role="menuitem" className="prop-item add" onClick={openPropertyOnboarding}><span>＋</span><p><strong>Add another property</strong><small>Build rooms, beds and rent defaults</small></p></button><button role="menuitem" className="prop-item backup" onClick={downloadPortfolioBackup}><span>⇩</span><p><strong>Download portfolio backup</strong><small>Keep a portable copy of this browser’s data</small></p></button><button role="menuitem" className="prop-item backup" onClick={() => { setSwitcherOpen(false); backupInputRef.current?.click(); }}><span>↥</span><p><strong>Restore portfolio backup</strong><small>Open a RentWise JSON backup on this device</small></p></button></div></>}
+          {switcherOpen && <><button className="prop-backdrop" aria-label="Close property menu" onClick={() => setSwitcherOpen(false)} /><div className="prop-menu" role="menu">{properties.map((item) => <button key={item.id} role="menuitem" className={item.id === activePropertyId ? 'prop-item active' : 'prop-item'} onClick={() => switchProperty(item.id)}><span>{propertyInitials(item.name)}</span><p><strong>{item.name}</strong><small>{item.address || 'No address yet'}</small></p>{item.id === activePropertyId && <b>✓</b>}</button>)}<div className="prop-divider" /><button role="menuitem" className="prop-item add" onClick={openPropertyOnboarding}><span>＋</span><p><strong>Add another property</strong><small>Build rooms, beds and rent defaults</small></p></button>{!demo && <a role="menuitem" className="prop-item backup" href="/api/account/export"><span>⇩</span><p><strong>Download account export</strong><small>Properties, ledgers and audit history</small></p></a>}{demo && <button role="menuitem" className="prop-item backup" onClick={downloadPortfolioBackup}><span>⇩</span><p><strong>Download portfolio backup</strong><small>Keep a portable copy of this browser’s data</small></p></button>}{demo && <button role="menuitem" className="prop-item backup" onClick={() => { setSwitcherOpen(false); backupInputRef.current?.click(); }}><span>↥</span><p><strong>Restore portfolio backup</strong><small>Open a RentWise JSON backup on this device</small></p></button>}</div></>}
         </div>
-        <div className="mobile-nav">{(['overview', 'property', 'tenants', 'rent', 'documents', 'maintenance'] as View[]).map((item) => <button key={item} className={view === item ? 'active' : ''} onClick={() => goTo(item)}>{({ overview: 'Today', property: 'Property', tenants: 'Tenants', rent: 'Rent', documents: 'Documents', maintenance: 'Repairs' } as Record<View, string>)[item]}</button>)}</div>
+        <div className="mobile-nav">{(['overview', 'property', 'tenants', 'rent', 'bookings', 'finance', 'documents', 'maintenance'] as View[]).map((item) => <button key={item} className={view === item ? 'active' : ''} onClick={() => goTo(item)}>{({ overview: 'Today', property: 'Property', tenants: 'Tenants', rent: 'Rent', bookings: 'Bookings', finance: 'Expenses', documents: 'Documents', maintenance: 'Repairs' } as Record<View, string>)[item]}</button>)}</div>
         <main className="view-stage" key={view}>
         <header className="page-head">
           <div><p className="overline">{copy.eyebrow}</p><h1>{view === 'overview' ? <><em>Good {timeOfDay()}</em>{demo ? ', Govind.' : '.'}</> : copy.title}</h1><p>{copy.subtitle}</p></div>
@@ -537,8 +785,10 @@ function Workspace() {
         {view === 'overview' && <Overview propertyName={propertyLabel} demo={demo} tenants={tenants} orders={orders} metrics={metrics} inventory={inventory} availableBeds={availableBeds.length} onView={goTo} onTenant={setDrawerId} onPayment={openPayment} />}
         {view === 'property' && property && <PropertyView property={property} tenants={tenants} inventory={inventory} availableCount={availableBeds.length} onTenant={setDrawerId} onAdd={() => setModal('tenant')} onEdit={() => setPropEditOpen(true)} onNewProperty={openPropertyOnboarding} />}
         {view === 'tenants' && <TenantsView tenants={filteredTenants} totals={{ active: tenants.length, verified: tenants.filter((tenant) => profileFor(tenant).kyc === 'verified').length, clear: tenants.filter((tenant) => balanceFor(tenant) === 0).length, rooms: new Set(tenants.map((tenant) => tenant.room)).size }} query={query} filter={filter} onQuery={setQuery} onFilter={setFilter} onTenant={setDrawerId} onPayment={openPayment} />}
-        {view === 'rent' && <RentView tenants={tenants} metrics={metrics} onTenant={setDrawerId} onPayment={openPayment} />}
-        {view === 'documents' && <DocumentsView tenants={tenants} onTenant={setDrawerId} onToast={showToast} />}
+        {view === 'rent' && <RentView tenants={tenants} metrics={metrics} propertyName={propertyLabel} history={realHistory} onTenant={setDrawerId} onPayment={openPayment} />}
+        {view === 'bookings' && <BookingsView bookings={bookings} notices={exitNotices} onAddBooking={() => setModal('booking')} onAddNotice={() => setModal('notice')} onAdvanceBooking={advanceBooking} onCancelBooking={cancelBooking} onAdvanceNotice={advanceNotice} />}
+        {view === 'finance' && <FinanceView expenses={expenses} collected={metrics.collected} onAdd={() => setModal('expense')} />}
+        {view === 'documents' && <DocumentsView tenants={tenants} documents={documents} onUpload={() => setModal('document')} onReview={reviewDocument} />}
         {view === 'maintenance' && <MaintenanceView orders={orders} onUpdate={updateOrder} onAdd={() => setModal('maintenance')} />}
         </main>
       </div>
@@ -548,6 +798,10 @@ function Workspace() {
       {modal === 'tenant' && <AddTenantModal availableBeds={availableBeds} draftDate={draftDate} draftRent={draftRent} defaultSecurity={property?.defaultSecurity ?? 3000} onDate={setDraftDate} onRent={setDraftRent} onClose={() => setModal(null)} onSubmit={addTenant} />}
       {modal === 'payment' && selectedTenant && <PaymentModal tenant={selectedTenant} onClose={() => setModal(null)} onSubmit={recordPayment} />}
       {modal === 'maintenance' && <MaintenanceModal tenants={tenants} onClose={() => setModal(null)} onSubmit={addMaintenance} />}
+      {modal === 'booking' && <BookingModal defaultRent={property?.defaultRent ?? 3000} onClose={() => setModal(null)} onSubmit={addBooking} />}
+      {modal === 'expense' && <ExpenseModal onClose={() => setModal(null)} onSubmit={addExpense} />}
+      {modal === 'notice' && <ExitNoticeModal tenants={tenants.filter((tenant) => !exitNotices.some((notice) => notice.tenantId === tenant.id && notice.status === 'open'))} noticeDays={property?.noticeDays ?? 30} onClose={() => setModal(null)} onSubmit={addExitNotice} />}
+      {modal === 'document' && <DocumentUploadModal tenants={tenants} onClose={() => setModal(null)} onSubmit={uploadDocument} />}
       {propertyOnboardingOpen && <PropertyOnboarding preset={propertyPreset} existingNames={properties.map((item) => item.name)} onClose={() => setPropertyOnboardingOpen(false)} onCreated={createProperty} />}
       {assistantOpen && <AssistantModal tenants={tenants} orders={orders} metrics={metrics} availableBeds={availableBeds.length} propertyName={propertyLabel} onClose={() => setAssistantOpen(false)} onView={(next) => { setAssistantOpen(false); goTo(next); }} onPay={(id) => { setAssistantOpen(false); openPayment(id); }} />}
       {toast && <div className="toast" role="status">✓ {toast}</div>}
@@ -663,18 +917,56 @@ function TenantsView({ tenants, totals, query, filter, onQuery, onFilter, onTena
     </section></div>;
 }
 
-function RentView({ tenants, metrics, onTenant, onPayment }: { tenants: Tenant[]; metrics: Summary; onTenant: (id: number) => void; onPayment: (id: number) => void }) {
+function RentView({ tenants, metrics, propertyName, history, onTenant, onPayment }: { tenants: Tenant[]; metrics: Summary; propertyName: string; history?: Record<number, Receipt[]>; onTenant: (id: number) => void; onPayment: (id: number) => void }) {
   const pending = tenants.filter((tenant) => balanceFor(tenant) > 0).sort((a,b) => balanceFor(b) - balanceFor(a)); const percent = metrics.expected ? Math.round(metrics.collected / metrics.expected * 100) : 0;
   const rentPercent = metrics.recurringExpected ? Math.round(metrics.recurringCollected / metrics.recurringExpected * 100) : 0;
+  function receiptsFor(tenant: Tenant) {
+    return history?.[tenant.id] ?? (tenant.received > 0 ? (paymentHistory[tenant.id] ?? [{ amount: tenant.received, date: 'August', mode: 'UPI', note: 'Payment received' }]) : []);
+  }
+  function exportLedger() {
+    const quote = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+    const lines = ['Date,Tenant,Room,Bed,Amount,Mode,Note'];
+    for (const tenant of tenants) for (const receipt of receiptsFor(tenant)) lines.push([receipt.date, tenant.name, tenant.room, tenant.bed, receipt.amount, receipt.mode, receipt.note].map(quote).join(','));
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = 'rentwise-ledger.csv'; link.click();
+    URL.revokeObjectURL(url);
+  }
   return <div className="view-stack"><section className="rent-hero"><div><p className="overline">THIS MONTH</p><h2>{money.format(metrics.collected)}</h2><span>collected of {money.format(metrics.expected)}</span><div className="wide-meter"><i style={{width:`${percent}%`}} /></div></div><div className="rent-split"><article><span>Move-in money</span><strong>{money.format(Math.min(metrics.collected, metrics.expected - metrics.recurringExpected))}</strong><small>{percent}% of everything received</small></article><article><span>This month’s rent</span><strong>{money.format(metrics.recurringCollected)}</strong><small className={metrics.recurringExpected && rentPercent >= 100 ? 'good' : ''}>{metrics.recurringExpected ? `${rentPercent}% of ${shortMoney(metrics.recurringExpected)}` : 'No rent cycles yet'}</small></article><article><span>Outstanding</span><strong className={metrics.pending ? 'warn' : 'good'}>{money.format(metrics.pending)}</strong><small>{pending.length} tenants</small></article></div></section>
-    <section className="rent-layout"><article className="surface dues"><div className="surface-head"><div><p className="overline">FOLLOW-UP QUEUE</p><h2>Outstanding dues</h2></div><span>{pending.length} tenants</span></div>{pending.length ? <div className="due-list">{pending.map((tenant) => <div key={tenant.id}><button className="due-person" onClick={() => onTenant(tenant.id)}><span>{tenant.name.slice(0,1)}</span><p><strong>{tenant.name}</strong><small>Room {tenant.room} · Bed {tenant.bed}{tenant.monthly && tenant.monthly.expected > 0 && tenant.monthly.status !== 'paid' ? ` · ${formatPeriod(tenant.monthly.period)} rent ${tenant.monthly.status}` : ''}</small></p></button><div className="due-amount"><strong>{money.format(balanceFor(tenant))}</strong><small>of {money.format(dueFor(tenant))}</small></div><button className="record-button" onClick={() => onPayment(tenant.id)}>Record payment</button></div>)}</div> : <div className="empty"><strong>Everyone’s settled</strong><span>No outstanding balances — the whole ledger is clear.</span></div>}</article>
+    <section className="rent-layout"><article className="surface dues"><div className="surface-head"><div><p className="overline">FOLLOW-UP QUEUE</p><h2>Outstanding dues</h2></div><div className="head-side"><span>{pending.length} tenants</span><button className="quiet-button" onClick={exportLedger}>⇩ Export ledger</button></div></div>{pending.length ? <div className="due-list">{pending.map((tenant) => { const balance = balanceFor(tenant); const remind = waLink(tenant, propertyName, balance); return <div key={tenant.id}><button className="due-person" onClick={() => onTenant(tenant.id)}><span>{tenant.name.slice(0,1)}</span><p><strong>{tenant.name}</strong><small>Room {tenant.room} · Bed {tenant.bed}{tenant.monthly && tenant.monthly.expected > 0 && tenant.monthly.status !== 'paid' ? ` · ${formatPeriod(tenant.monthly.period)} rent ${tenant.monthly.status}` : ''}</small></p></button><div className="due-amount"><strong>{money.format(balance)}</strong><small>of {money.format(dueFor(tenant))}</small></div>{remind && <a className="remind-link" href={remind} target="_blank" rel="noreferrer" aria-label={`Send ${tenant.name} a WhatsApp rent reminder`} title="WhatsApp reminder">✆</a>}<button className="record-button" onClick={() => onPayment(tenant.id)}>Record payment</button></div>; })}</div> : <div className="empty"><strong>Everyone’s settled</strong><span>No outstanding balances — the whole ledger is clear.</span></div>}</article>
       <aside className="rent-side"><article className="surface breakdown"><div className="surface-head"><div><p className="overline">RECEIVABLES</p><h2>What makes up the ledger</h2></div></div><div><span>Security deposits</span><strong>{money.format(tenants.reduce((sum,tenant)=>sum+tenant.security,0))}</strong></div><div><span>First-month (prorated)</span><strong>{money.format(tenants.reduce((sum,tenant)=>sum+tenant.firstMonthRent,0))}</strong></div><div><span>This month’s rent</span><strong>{money.format(metrics.recurringExpected)}</strong></div><footer><span>Total tracked</span><strong>{money.format(metrics.expected)}</strong></footer></article><article className="rent-note"><span>₹</span><p><strong>Made for split payments.</strong> Record any number of receipts against one tenant; RentWise applies them oldest-due-first and keeps every balance exact.</p></article></aside>
     </section></div>;
 }
 
-function DocumentsView({ tenants, onTenant, onToast }: { tenants: Tenant[]; onTenant: (id: number) => void; onToast: (message: string) => void }) {
-  const pending = tenants.filter((tenant) => profileFor(tenant).kyc === 'pending');
-  return <div className="view-stack"><section className="document-hero"><div><p className="overline">TENANT COMPLIANCE</p><h2>Everything you need, gently organised.</h2><p>Preview identity-proof follow-ups and agreement tracking without chasing WhatsApp threads.</p></div><button className="main-button" onClick={() => onToast('Document uploads arrive in the owner beta')}>⌑ Preview requests</button></section><section className="document-summary"><article><span>{tenants.length - pending.length}</span><p>Identity proofs verified<small>Ready and on file</small></p></article><article><span>{pending.length}</span><p>Proofs to review<small>Secure requests are in the owner beta</small></p></article><article><span>{tenants.length}</span><p>Rental agreements<small>All tracked in one place</small></p></article></section><section className="surface document-list"><div className="surface-head"><div><p className="overline">FOLLOW-UP QUEUE</p><h2>Identity proof & agreement status</h2></div><button className="quiet-button" onClick={() => onToast('Agreement generation arrives in the owner beta')}>Preview agreement</button></div>{tenants.map((tenant) => { const profile = profileFor(tenant); const needs = profile.kyc === 'pending'; return <article key={tenant.id}><button className="due-person" onClick={() => onTenant(tenant.id)}><span>{tenant.name.slice(0,1)}</span><p><strong>{tenant.name}</strong><small>Room {tenant.room} · Bed {tenant.bed}</small></p></button><div><span className={`document ${profile.kyc}`}>{needs ? 'Identity proof pending' : 'Identity proof verified'}</span><small>Agreement valid until {profile.agreementEnd}</small></div><button className="record-button" onClick={() => onToast(needs ? `Proof request previewed for ${tenant.name}` : `Document preview opened for ${tenant.name}`)}>{needs ? 'Preview request' : 'Preview files'}</button></article>; })}</section></div>;
+function BookingsView({ bookings, notices, onAddBooking, onAddNotice, onAdvanceBooking, onCancelBooking, onAdvanceNotice }: { bookings: Booking[]; notices: ExitNotice[]; onAddBooking: () => void; onAddNotice: () => void; onAdvanceBooking: (id: number) => void; onCancelBooking: (id: number) => void; onAdvanceNotice: (id: number) => void }) {
+  const live = bookings.filter((item) => !['checked-in', 'cancelled'].includes(item.status));
+  const confirmed = bookings.filter((item) => item.status === 'confirmed');
+  const tokens = bookings.filter((item) => item.status !== 'cancelled').reduce((sum, item) => sum + item.token, 0);
+  const activeNotices = notices.filter((item) => item.status === 'open');
+  const stageLabel: Record<Booking['status'], string> = { enquiry: 'Enquiry', visit: 'Visit planned', confirmed: 'Confirmed', 'checked-in': 'Checked in', cancelled: 'Cancelled' };
+  return <div className="view-stack"><section className="operations-summary"><article><span>{live.length}</span><p>Open prospects<small>Enquiry to confirmation</small></p></article><article><span>{confirmed.length}</span><p>Move-ins confirmed<small>Prepare beds and documents</small></p></article><article><span>{money.format(tokens)}</span><p>Booking tokens<small>Recorded, not processed online</small></p></article><article><span>{activeNotices.length}</span><p>Planned exits<small>Deposit checklist active</small></p></article></section>
+    <section className="operations-grid"><article className="surface pipeline"><div className="surface-head"><div><p className="overline">BOOKING PIPELINE</p><h2>Enquiries & upcoming move-ins</h2></div><button className="main-button" onClick={onAddBooking}>＋ New enquiry</button></div>{bookings.length ? <div className="pipeline-list">{bookings.map((item) => <article key={item.id} className={item.status === 'cancelled' ? 'inactive' : ''}><div className="pipeline-person"><span>{item.name.slice(0, 1)}</span><p><strong>{item.name}</strong><small>{item.phone} · {item.source}</small></p></div><div><span className={`booking-stage ${item.status}`}>{stageLabel[item.status]}</span><small>Move-in {new Date(`${item.moveIn}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</small></div><div><strong>{money.format(item.quotedRent)}</strong><small>{item.sharing} · token {money.format(item.token)}</small></div><div className="row-actions">{!['checked-in', 'cancelled'].includes(item.status) && <button className="record-button" onClick={() => onAdvanceBooking(item.id)}>{item.status === 'confirmed' ? 'Mark checked in' : item.status === 'visit' ? 'Confirm booking' : 'Plan visit'}</button>}{!['checked-in', 'cancelled'].includes(item.status) && <button className="icon-button danger" aria-label={`Cancel booking for ${item.name}`} onClick={() => onCancelBooking(item.id)}>×</button>}</div></article>)}</div> : <div className="empty"><strong>No enquiries yet</strong><span>Add prospects before promising a bed, so upcoming occupancy stays accurate.</span></div>}</article>
+      <aside className="surface exit-board"><div className="surface-head"><div><p className="overline">EXIT CONTROL</p><h2>Notice & deposits</h2></div><button className="quiet-button" onClick={onAddNotice}>＋ Record notice</button></div>{notices.length ? <div className="notice-list">{notices.map((item) => <article key={item.id} className={item.status}><div><strong>{item.tenantName}</strong><small>Room {item.room} · vacates {new Date(`${item.vacateOn}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</small></div><span className={`deposit-state ${item.depositStatus}`}>{item.depositStatus === 'review' ? 'Inspect room' : item.depositStatus === 'ready' ? 'Refund ready' : 'Refunded'}</span>{item.status === 'open' && <button className="record-button" onClick={() => onAdvanceNotice(item.id)}>{item.depositStatus === 'review' ? 'Clear inspection' : 'Mark refunded'}</button>}</article>)}</div> : <div className="empty compact"><strong>No planned exits</strong><span>Record notice to protect availability and deposits.</span></div>}<footer className="operations-note"><i>i</i><p><strong>Never double-book a bed.</strong><span>Confirm the actual allotment from Property only after the resident checks in.</span></p></footer></aside>
+    </section></div>;
+}
+
+function FinanceView({ expenses, collected, onAdd }: { expenses: Expense[]; collected: number; onAdd: () => void }) {
+  const thisMonth = todayISO().slice(0, 7);
+  const monthExpenses = expenses.filter((item) => item.date.startsWith(thisMonth));
+  const spent = monthExpenses.reduce((sum, item) => sum + item.amount, 0);
+  const net = collected - spent;
+  const byCategory = [...monthExpenses.reduce((map, item) => map.set(item.category, (map.get(item.category) ?? 0) + item.amount), new Map<Expense['category'], number>()).entries()].sort((a, b) => b[1] - a[1]);
+  return <div className="view-stack"><section className="finance-hero"><div><p className="overline">MONTHLY OPERATING VIEW</p><h2>{money.format(net)}</h2><span>estimated net cash flow</span></div><div className="finance-kpis"><article><span>Collections</span><strong>{money.format(collected)}</strong><small>Receipts recorded</small></article><article><span>Expenses</span><strong>{money.format(spent)}</strong><small>{monthExpenses.length} entries</small></article><article><span>Margin</span><strong>{collected ? `${Math.round(net / collected * 100)}%` : '—'}</strong><small>Before tax and accruals</small></article></div></section>
+    <section className="finance-layout"><article className="surface expense-ledger"><div className="surface-head"><div><p className="overline">EXPENSE LEDGER</p><h2>Operating expenses</h2></div><button className="main-button" onClick={onAdd}>＋ Add expense</button></div>{expenses.length ? <div className="expense-list">{expenses.map((item) => <article key={item.id}><span className={`expense-icon ${item.category.toLowerCase()}`}>{item.category.slice(0, 1)}</span><div><strong>{item.note || item.category}</strong><small>{item.vendor || 'No vendor'} · {new Date(`${item.date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</small></div><b>{money.format(item.amount)}</b></article>)}</div> : <div className="empty"><strong>No expenses recorded</strong><span>Add utilities, food, salaries and repairs to see realistic property performance.</span></div>}</article>
+      <aside className="surface category-breakdown"><div className="surface-head"><div><p className="overline">COST MIX</p><h2>This month</h2></div></div>{byCategory.length ? byCategory.map(([category, amount]) => <div key={category}><p><span>{category}</span><strong>{money.format(amount)}</strong></p><i><b style={{ width: `${spent ? Math.round(amount / spent * 100) : 0}%` }} /></i></div>) : <div className="empty compact"><strong>No monthly costs</strong><span>Your current month is clear.</span></div>}<footer><p>Use this as an operational view, not statutory accounting or tax advice.</p></footer></aside>
+    </section></div>;
+}
+
+function DocumentsView({ tenants, documents, onUpload, onReview }: { tenants: Tenant[]; documents: TenantDocument[]; onUpload: () => void; onReview: (id: number, status: 'verified' | 'rejected') => void }) {
+  const verified = documents.filter((document) => document.status === 'verified').length;
+  const review = documents.filter((document) => document.status === 'uploaded').length;
+  return <div className="view-stack"><section className="document-hero"><div><p className="overline">TENANT COMPLIANCE</p><h2>Documents, consent and review in one secure place.</h2><p>Store resident-provided proofs and agreements with an auditable verification status. Mask Aadhaar copies before upload.</p></div><button className="main-button" onClick={onUpload}>⌑ Upload document</button></section><section className="document-summary"><article><span>{verified}</span><p>Files verified<small>Reviewed by the owner</small></p></article><article><span>{review}</span><p>Files to review<small>Uploaded with consent</small></p></article><article><span>{documents.length}</span><p>Total secure files<small>Private owner access</small></p></article></section><section className="surface document-list"><div className="surface-head"><div><p className="overline">DOCUMENT REGISTER</p><h2>Resident files</h2></div><button className="quiet-button" onClick={onUpload}>＋ Add file</button></div>{documents.length ? documents.map((document) => { const tenant = tenants.find((item) => item.id === document.tenancyId); return <article key={document.id}><div className="due-person"><span>{tenant?.name.slice(0, 1) ?? 'D'}</span><p><strong>{document.label}</strong><small>{tenant?.name ?? 'Former resident'} · {document.originalName || document.kind}</small></p></div><div><span className={`document ${document.status === 'verified' ? 'verified' : 'pending'}`}>{document.status.replace('_', ' ')}</span><small>{document.sizeBytes ? `${Math.ceil(document.sizeBytes / 1024)} KB` : 'Metadata only'}</small></div><div className="row-actions"><a className="record-button" href={`/api/documents?id=${document.id}`}>Download</a>{document.status === 'uploaded' && <><button className="record-button" onClick={() => onReview(document.id, 'verified')}>Verify</button><button className="icon-button danger" aria-label={`Reject ${document.label}`} onClick={() => onReview(document.id, 'rejected')}>×</button></>}</div></article>; }) : <div className="empty"><strong>No files uploaded</strong><span>Add the first resident-provided proof or agreement. Consent is recorded with every upload.</span></div>}</section></div>;
 }
 
 function MaintenanceView({ orders, onUpdate, onAdd }: { orders: WorkOrder[]; onUpdate: (id: number) => void; onAdd: () => void }) {
@@ -690,10 +982,7 @@ function TenantDrawer({ tenant, propertyName = 'RentWise', history, onClose, onP
       .map((item, index) => ({ id: -(index + 1), ...item }))
     : [];
   const receipts = history ?? fallbackReceipts;
-  const digits = (tenant.phone ?? '').replace(/\D/g, '');
-  const whatsapp = digits.length >= 10
-    ? `https://wa.me/91${digits.slice(-10)}?text=${encodeURIComponent(`Hi ${tenant.name.split(' ')[0]}, a gentle reminder from ${propertyName}: ${money.format(balance)} is pending for Room ${tenant.room}, Bed ${tenant.bed}. UPI works fine — thank you!`)}`
-    : null;
+  const whatsapp = waLink(tenant, propertyName, balance);
   return <div className="drawer-layer" onMouseDown={onClose}><aside className="drawer" role="dialog" aria-modal="true" aria-label={`Tenant profile: ${tenant.name}`} onMouseDown={(event)=>event.stopPropagation()}><header><button aria-label="Close profile" onClick={onClose}>×</button><div className="drawer-topline"><p className="overline">TENANT PROFILE</p>{onUpdate && <button className="link-button" onClick={() => setEditing((value) => !value)}>{editing ? 'Cancel' : '✎ Edit details'}</button>}</div><div className="drawer-person"><span>{tenant.name.split(' ').map((part)=>part[0]).join('').slice(0,2)}</span><div><h2>{tenant.name}</h2><p>Room {tenant.room} · Bed {tenant.bed}</p></div></div><div className="drawer-actions">{balance > 0 ? <button className="main-button" onClick={onPayment}>₹ Record payment</button> : <button className="main-button" disabled>✓ Balance clear</button>}{whatsapp ? <a className="quiet-button" href={whatsapp} target="_blank" rel="noreferrer">Message</a> : <button className="quiet-button" title="Add a phone number to enable WhatsApp">Message</button>}</div></header><div className="drawer-body">
     {editing && onUpdate ? (
       <form className="edit-grid" onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); onUpdate(tenant.id, { name: String(data.get('name')), phone: String(data.get('phone')), rent: Number(data.get('rent')), security: Number(data.get('security')) }); setEditing(false); }}>
@@ -710,7 +999,7 @@ function TenantDrawer({ tenant, propertyName = 'RentWise', history, onClose, onP
     )}
     <section className="drawer-section"><div className="section-title"><h3>Rent standing</h3><span className={`pill ${balance?'part':'settled'}`}>{balance?'Balance due':'All clear'}</span></div><div className="rent-standing"><div><span>Monthly rent</span><strong>{money.format(tenant.rent)}</strong></div><div><span>Security deposit</span><strong>{money.format(tenant.security)}</strong></div><div className={balance?'highlight':''}><span>Total balance</span><strong>{balance?money.format(balance):'₹0'}</strong></div>{tenant.monthly && tenant.monthly.expected > 0 && (() => { const m = tenant.monthly!; return <div className={m.status === 'paid' ? '' : 'highlight'}><span>Rent · {formatPeriod(m.period)}</span><strong>{m.status === 'paid' ? 'Paid ✓' : m.status === 'partial' ? `${money.format(Math.max(0, m.expected - m.paid))} left` : money.format(m.expected)}</strong></div>; })()}</div></section>
     <section className="drawer-section"><div className="section-title"><h3>Documents</h3></div><div className="docs"><div><i>⌑</i><p><strong>Identity & address proof</strong><span>{profile.kyc==='verified'?'Verified and on file':'Needs verification'}</span></p><b className={profile.kyc}>{profile.kyc==='verified'?'✓':'!'}</b></div><div><i>≡</i><p><strong>Rental agreement</strong><span>Valid until {profile.agreementEnd}</span></p><b className="verified">✓</b></div></div></section>
-    <section className="drawer-section"><div className="section-title"><h3>Recent receipts</h3></div>{receipts.length ? <div className="receipts">{receipts.map((item,index)=><div key={`${item.id || index}`}><i>₹</i><p><strong>{money.format(item.amount)}</strong><span>{item.note} · {item.mode}</span></p>{onVoidReceipt && item.id > 0 && <button className="receipt-void" aria-label={`Void receipt of ${money.format(item.amount)}`} title="Void receipt" onClick={() => onVoidReceipt(item.id)}>×</button>}<time>{item.date}</time></div>)}</div> : <p className="no-receipts">No receipts yet — record the first payment to start the ledger.</p>}</section>
+    <section className="drawer-section"><div className="section-title"><h3>Recent receipts</h3></div>{receipts.length ? <div className="receipts">{receipts.map((item,index)=><div key={`${item.id || index}`}><i>₹</i><p><strong>{money.format(item.amount)}</strong><span>{item.note} · {item.mode}</span></p><button className="receipt-print" aria-label={`Print receipt of ${money.format(item.amount)}`} title="Print receipt" onClick={() => printReceipt(tenant, propertyName, item, balance)}>⎙</button>{onVoidReceipt && item.id > 0 && <button className="receipt-void" aria-label={`Void receipt of ${money.format(item.amount)}`} title="Void receipt" onClick={() => onVoidReceipt(item.id)}>×</button>}<time>{item.date}</time></div>)}</div> : <p className="no-receipts">No receipts yet — record the first payment to start the ledger.</p>}</section>
     {onVacate && <section className="drawer-section"><div className="section-title"><h3>Tenancy</h3></div><div className="vacate-row"><p>Checked out? Closing the tenancy frees the bed and keeps every receipt on file.</p><button className="quiet-button danger" onClick={onVacate}>Vacate bed</button></div></section>}
   </div></aside></div>;
 }
@@ -725,4 +1014,22 @@ function PaymentModal({ tenant, onClose, onSubmit }: { tenant: Tenant; onClose:(
 
 function MaintenanceModal({ tenants, onClose, onSubmit }: { tenants: Tenant[]; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
   return <div className="modal-layer" onMouseDown={onClose}><section className="modal" role="dialog" aria-modal="true" aria-label="New maintenance request" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" aria-label="Close" onClick={onClose}>×</button><p className="overline">NEW REQUEST</p><h2>Log a repair</h2><p className="modal-copy">Capture the issue now, then move it from new to resolved as work progresses.</p><form onSubmit={onSubmit}><label>What needs attention?<input name="title" required autoFocus placeholder="e.g. Bathroom tap is leaking" /></label><div className="form-row"><label>Room<input name="room" required placeholder="12" /></label><label>Reported by<select name="tenant" defaultValue=""><option value="">Owner / staff</option>{tenants.map((tenant) => <option key={tenant.id} value={tenant.name}>{tenant.name} · Room {tenant.room}</option>)}</select></label></div><div className="form-row"><label>Category<select name="category" defaultValue="Plumbing"><option>Plumbing</option><option>Electrical</option><option>Carpentry</option><option>Housekeeping</option><option>Other</option></select></label><label>Priority<select name="priority" defaultValue="normal"><option value="urgent">Urgent</option><option value="normal">Normal</option><option value="low">Low</option></select></label></div><button className="main-button full" type="submit">Create request</button></form></section></div>;
+}
+
+function BookingModal({ defaultRent, onClose, onSubmit }: { defaultRent: number; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  const defaultMoveIn = new Date(); defaultMoveIn.setDate(defaultMoveIn.getDate() + 7);
+  return <div className="modal-layer" onMouseDown={onClose}><section className="modal" role="dialog" aria-modal="true" aria-label="New booking enquiry" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" aria-label="Close" onClick={onClose}>×</button><p className="overline">NEW ENQUIRY</p><h2>Add a prospective resident</h2><p className="modal-copy">Hold the conversation, expected move-in and token together before allotting a real bed.</p><form onSubmit={onSubmit}><label>Prospect name<input name="name" required autoFocus placeholder="Full name" /></label><div className="form-row"><label>Phone number<input name="phone" required inputMode="tel" pattern="[0-9 +()-]{10,16}" placeholder="10-digit mobile" /></label><label>Expected move-in<input name="moveIn" type="date" defaultValue={defaultMoveIn.toISOString().slice(0, 10)} required /></label></div><div className="form-row"><label>Preferred occupancy<select name="sharing"><option>Single room</option><option>Double sharing</option><option>Triple sharing</option><option>Four sharing</option><option>Dorm style</option></select></label><label>Lead source<select name="source"><option>WhatsApp</option><option>Walk-in</option><option>Referral</option><option>Google</option><option>Property portal</option><option>Other</option></select></label></div><div className="form-row"><label>Quoted monthly rent<input name="rent" type="number" min="0" defaultValue={defaultRent} required /></label><label>Token recorded<input name="token" type="number" min="0" defaultValue="0" /></label></div><p className="setup-note neutral"><i>i</i><span>Recording a token does not collect money. Use your approved payment provider for online payments.</span></p><button className="main-button full" type="submit">Add to pipeline</button></form></section></div>;
+}
+
+function ExpenseModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  return <div className="modal-layer" onMouseDown={onClose}><section className="modal" role="dialog" aria-modal="true" aria-label="Add expense" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" aria-label="Close" onClick={onClose}>×</button><p className="overline">NEW EXPENSE</p><h2>Record an operating cost</h2><p className="modal-copy">Keep property spending categorised so collections and profitability tell the same story.</p><form onSubmit={onSubmit}><div className="form-row"><label>Category<select name="category"><option>Utilities</option><option>Maintenance</option><option>Food</option><option>Salary</option><option>Supplies</option><option>Tax</option><option>Other</option></select></label><label>Amount<input name="amount" type="number" min="1" inputMode="numeric" required /></label></div><div className="form-row"><label>Spent on<input name="date" type="date" defaultValue={todayISO()} required /></label><label>Vendor<input name="vendor" placeholder="Optional" /></label></div><label>Description<input name="note" required placeholder="e.g. August electricity bill" /></label><button className="main-button full" type="submit">Save expense</button></form></section></div>;
+}
+
+function ExitNoticeModal({ tenants, noticeDays, onClose, onSubmit }: { tenants: Tenant[]; noticeDays: number; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  const vacate = new Date(); vacate.setDate(vacate.getDate() + noticeDays);
+  return <div className="modal-layer" onMouseDown={onClose}><section className="modal" role="dialog" aria-modal="true" aria-label="Record exit notice" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" aria-label="Close" onClick={onClose}>×</button><p className="overline">EXIT NOTICE</p><h2>Plan a resident checkout</h2><p className="modal-copy">Reserve the exit date, room inspection and deposit refund without losing the tenancy history.</p><form onSubmit={onSubmit}><label>Resident<select name="tenant" required disabled={!tenants.length}><option value="">Select a resident</option>{tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.name} · Room {tenant.room}, Bed {tenant.bed}</option>)}</select></label><div className="form-row"><label>Notice received<input name="givenOn" type="date" defaultValue={todayISO()} required /></label><label>Planned vacate date<input name="vacateOn" type="date" defaultValue={vacate.toISOString().slice(0, 10)} required /></label></div>{!tenants.length && <p className="auth-error">Every active resident already has an open notice.</p>}<button className="main-button full" type="submit" disabled={!tenants.length}>Create exit checklist</button></form></section></div>;
+}
+
+function DocumentUploadModal({ tenants, onClose, onSubmit }: { tenants: Tenant[]; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  return <div className="modal-layer" onMouseDown={onClose}><section className="modal" role="dialog" aria-modal="true" aria-label="Upload resident document" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" aria-label="Close" onClick={onClose}>×</button><p className="overline">SECURE DOCUMENT</p><h2>Add a resident-provided file</h2><p className="modal-copy">PDF and images up to 8 MB. Mask the first eight Aadhaar digits before storing a copy.</p><form onSubmit={onSubmit}><label>Resident<select name="tenancyId" required><option value="">Select a resident</option>{tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.name} · Room {tenant.room}</option>)}</select></label><div className="form-row"><label>Document type<select name="kind" defaultValue="identity"><option value="identity">Identity proof</option><option value="address">Address proof</option><option value="agreement">Rental agreement</option><option value="police_verification">Police verification</option><option value="other">Other</option></select></label><label>Label<input name="label" required placeholder="e.g. Masked Aadhaar" /></label></div><label>Choose file<input name="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required /></label><label className="consent-check"><input name="consent" type="checkbox" required /><span>The resident provided this file and consented to its use for tenancy administration.</span></label><button className="main-button full" type="submit" disabled={!tenants.length}>Upload securely</button></form></section></div>;
 }

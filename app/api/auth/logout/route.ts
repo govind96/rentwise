@@ -1,5 +1,3 @@
-import { clearSessionCookie } from '../../../lib/auth';
-
 export async function POST() {
-  return Response.json({ ok: true }, { headers: { 'Set-Cookie': clearSessionCookie() } });
+  return Response.json({ signOutUrl: '/signout-with-chatgpt?return_to=/' }, { headers: { 'Cache-Control': 'no-store' } });
 }
