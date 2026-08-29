@@ -68,6 +68,7 @@ export default function Landing() {
       <main>
         {/* ---------- hero ---------- */}
         <section className="hero land-hero">
+          <img className="land-hero-art" src="/rentwise-paper-city.png" alt="" aria-hidden="true" />
           <span className="hero-badge"><i aria-hidden="true" />Property management for Indian PGs &amp; hostels</span>
           <h1>Rent, rooms and repairs, <em>in one place</em>.</h1>
           <p className="land-sub">

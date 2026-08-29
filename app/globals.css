@@ -1037,6 +1037,21 @@ a.main-button, a.quiet-button { text-decoration: none; }
 .nav-label-short { display: none; }
 
 .hero { max-width: 1180px; margin: 0 auto; padding: 88px 24px 0; text-align: center; position: relative; }
+.land-hero { isolation: isolate; padding-bottom: 76px; }
+.land-hero::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 42%, var(--canvas) 0 29%, color-mix(in srgb, var(--canvas) 88%, transparent) 48%, transparent 72%);
+}
+.land-hero-art {
+  position: absolute; z-index: -2; pointer-events: none;
+  left: 50%; bottom: -48px; transform: translateX(-50%);
+  width: min(1672px, 112vw); height: calc(100% + 72px);
+  object-fit: cover; object-position: center bottom;
+  opacity: .82;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.2) 16%, #000 40%);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.2) 16%, #000 40%);
+}
+[data-theme='dark'] .land-hero-art { opacity: .12; filter: saturate(.65) contrast(.9); }
 .hero-badge {
   display: inline-flex; align-items: center; gap: 9px; padding: 7px 16px; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--lav) 38%, transparent); background: var(--glass);
@@ -1582,6 +1597,9 @@ legend small { font-weight: 500; color: var(--muted); margin-left: 6px; font-siz
   .nav-label-short { display: inline; }
   .land-nav-actions .main-button { min-height: 38px; padding: 0 12px; font-size: 12px; }
   .hero { padding-top: 56px; }
+  .land-hero { padding-bottom: 52px; }
+  .land-hero-art { bottom: -24px; width: 170vw; height: calc(100% + 28px); opacity: .58; object-position: center bottom; }
+  [data-theme='dark'] .land-hero-art { opacity: .1; }
   .hero-preview { padding: 0 16px; margin-top: 44px; }
   .pw-body { grid-template-columns: 1fr; }
   .pw-side { display: none; }
