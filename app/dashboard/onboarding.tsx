@@ -42,8 +42,7 @@ const amenities = ['Wi-Fi', 'Meals', 'Laundry', 'Power backup', 'Housekeeping', 
 const steps = [
   { label: 'Basics', hint: 'Name and location' },
   { label: 'Layout', hint: 'Sharing and beds' },
-  { label: 'Collection', hint: 'Rent defaults' },
-  { label: 'Operations', hint: 'Services and policy' },
+  { label: 'Collection', hint: 'Rent and notice defaults' },
   { label: 'Review', hint: 'Ready to create' },
 ];
 
@@ -156,7 +155,7 @@ export default function PropertyOnboarding({ existingNames, onClose, onCreated, 
       <section ref={dialogRef} className="property-onboarding" role="dialog" aria-modal="true" aria-labelledby="property-onboarding-title">
         <aside className="onboarding-rail">
           <button className="onboarding-brand" type="button" onClick={onClose}><BrandMark /><strong>RentWise</strong></button>
-          <div><p className="overline">PROPERTY SETUP</p><h2>Set up how your property runs.</h2><p>Add its rooms, beds, services, rent defaults and resident policies.</p></div>
+          <div><p className="overline">PROPERTY SETUP</p><h2>Set up your property.</h2><p>Add its rooms, beds, rent defaults and notice period.</p></div>
           <ol>{steps.map((item, index) => <li key={item.label} className={index === step ? 'active' : index < step ? 'done' : ''}><span>{index < step ? '✓' : index + 1}</span><p><strong>{item.label}</strong><small>{item.hint}</small></p></li>)}</ol>
           <p className="onboarding-save">Owner account · Changes saved automatically</p>
         </aside>
@@ -185,25 +184,18 @@ export default function PropertyOnboarding({ existingNames, onClose, onCreated, 
               <header><p className="overline">COLLECTION RULES</p><h1 id="property-onboarding-title" tabIndex={-1}>Set sensible rent defaults.</h1><span>These become the starting values for new allotments and can still be changed resident by resident.</span></header>
               <div className="form-row"><label>Monthly rent per bed (₹)<input type="number" min="1" inputMode="numeric" required value={draft.rent} onChange={(event) => update('rent', Math.max(0, Number(event.target.value)))} /></label><label>Default security deposit (₹)<input type="number" min="0" inputMode="numeric" required value={draft.security} onChange={(event) => update('security', Math.max(0, Number(event.target.value)))} /></label></div>
               <div className="form-row three"><label>Rent due day<input type="number" min="1" max="28" required value={draft.rentDueDay} onChange={(event) => update('rentDueDay', Math.min(28, Math.max(1, Number(event.target.value))))} /></label><label>Grace period<input type="number" min="0" max="15" required value={draft.graceDays} onChange={(event) => update('graceDays', Math.min(15, Math.max(0, Number(event.target.value))))} /></label><label>Late fee (₹)<input type="number" min="0" inputMode="numeric" required value={draft.lateFee} onChange={(event) => update('lateFee', Math.max(0, Number(event.target.value)))} /></label></div>
+              <label className="notice-field">Notice period<div className="input-suffix"><input type="number" min="0" max="180" required value={draft.noticeDays} onChange={(event) => update('noticeDays', Math.min(180, Math.max(0, Number(event.target.value))))} /><span>days</span></div><small>Used to suggest a vacate date when you record a resident’s notice.</small></label>
               <div className="collection-preview"><span>Monthly collection potential</span><strong>₹{(draft.rent * totalBeds).toLocaleString('en-IN')}</strong><p>If all {totalBeds} beds are occupied · rent due on day {draft.rentDueDay}{draft.graceDays ? ` · ${draft.graceDays}-day grace period` : ''}</p></div>
               <p className="setup-note"><i>✦</i><span><strong>Prorating is automatic.</strong> RentWise calculates the exact first-month amount from each resident’s move-in date.</span></p>
             </div>}
 
-            {step === 3 && <div className="onboarding-step">
-              <header><p className="overline">OPERATING PROFILE</p><h1 id="property-onboarding-title" tabIndex={-1}>Capture how the PG runs.</h1><span>These defaults keep staff, tenants and future agreements aligned. They can be changed later.</span></header>
-              <div className="operation-grid"><label>Meal plan<select value={draft.mealPlan} onChange={(event) => update('mealPlan', event.target.value as PropertyDraft['mealPlan'])}><option>Included</option><option>Optional add-on</option><option>Not offered</option></select></label><label>Electricity billing<select value={draft.electricityPlan} onChange={(event) => update('electricityPlan', event.target.value as PropertyDraft['electricityPlan'])}><option>Included in rent</option><option>Metered separately</option><option>Fixed monthly charge</option></select></label><label>Room climate<select value={draft.climatePlan} onChange={(event) => update('climatePlan', event.target.value as PropertyDraft['climatePlan'])}><option>Non-AC</option><option>AC</option><option>Mixed AC & non-AC</option></select></label><label>Bathrooms<select value={draft.bathroomPlan} onChange={(event) => update('bathroomPlan', event.target.value as PropertyDraft['bathroomPlan'])}><option>Attached</option><option>Shared</option><option>Mixed</option></select></label></div>
-              <label>Default notice period<div className="input-suffix"><input type="number" min="0" max="180" required value={draft.noticeDays} onChange={(event) => update('noticeDays', Math.min(180, Math.max(0, Number(event.target.value))))} /><span>days</span></div></label>
-              <fieldset><legend>Move-in checklist <small>Requirements vary locally</small></legend><div className="policy-checks"><button type="button" aria-pressed={draft.agreementRequired} className={draft.agreementRequired ? 'selected' : ''} onClick={() => update('agreementRequired', !draft.agreementRequired)}><i>{draft.agreementRequired ? '✓' : '+'}</i><span><strong>Rental agreement</strong><small>Track a signed agreement for each resident</small></span></button><button type="button" aria-pressed={draft.verificationRequired} className={draft.verificationRequired ? 'selected' : ''} onClick={() => update('verificationRequired', !draft.verificationRequired)}><i>{draft.verificationRequired ? '✓' : '+'}</i><span><strong>Tenant verification</strong><small>Collect ID and track local verification status</small></span></button></div></fieldset>
-              <p className="setup-note neutral"><i>i</i><span><strong>Designed to stay flexible.</strong> Local registration, police-verification and safety requirements differ by state and city, so RentWise tracks your chosen process without presenting it as legal advice.</span></p>
-            </div>}
-
-            {step === 4 && <div className="onboarding-step review-step">
-              <header><p className="overline">READY TO CREATE</p><h1 id="property-onboarding-title" tabIndex={-1}>Your property workspace is ready.</h1><span>Review the operating defaults below. You can allot the first resident immediately after creating it.</span></header>
+            {step === 3 && <div className="onboarding-step review-step">
+              <header><p className="overline">READY TO CREATE</p><h1 id="property-onboarding-title" tabIndex={-1}>Your property workspace is ready.</h1><span>Review the setup below. You can allot the first resident immediately after creating it.</span></header>
               <div className="review-property"><span>{initials(draft.name)}</span><div><strong>{draft.name || 'Your property'}</strong><p>{draft.address}, {draft.city}</p><small>{draft.audience} · {draft.type}</small></div></div>
               <div className="review-grid"><article><span>Inventory</span><strong>{totalRooms} rooms</strong><small>{totalBeds} beds across {draft.floors} floors</small></article><article><span>Rent default</span><strong>₹{draft.rent.toLocaleString('en-IN')}</strong><small>per bed monthly</small></article><article><span>Deposit</span><strong>₹{draft.security.toLocaleString('en-IN')}</strong><small>default per resident</small></article><article><span>Collection</span><strong>Due day {draft.rentDueDay}</strong><small>{draft.graceDays}-day grace · ₹{draft.lateFee.toLocaleString('en-IN')} late fee</small></article></div>
-              <div className="review-operations"><div><span>Services</span><strong>{draft.mealPlan} meals · {draft.electricityPlan}</strong></div><div><span>Resident policy</span><strong>{draft.noticeDays}-day notice · {draft.agreementRequired ? 'Agreement tracked' : 'Agreement optional'} · {draft.verificationRequired ? 'Verification tracked' : 'Verification optional'}</strong></div></div>
+              <div className="review-operations"><div><span>Notice period</span><strong>{draft.noticeDays} days before planned move-out</strong></div></div>
               <div className="review-amenities"><span>Amenities</span><p>{draft.amenities.length ? draft.amenities.map((item) => <i key={item}>{item}</i>) : <em>None selected</em>}</p></div>
-              <div className="after-create"><p className="overline">WHAT HAPPENS NEXT</p><div><span>1</span><p><strong>Rooms and beds are created</strong><small>Your mixed-sharing plan opens as a clean, vacant floor plan.</small></p></div><div><span>2</span><p><strong>Allot your first resident</strong><small>Rent, deposit and operating defaults are already filled in.</small></p></div></div>
+              <div className="after-create"><p className="overline">WHAT HAPPENS NEXT</p><div><span>1</span><p><strong>Rooms and beds are created</strong><small>Your room plan opens as a clean, vacant floor plan.</small></p></div><div><span>2</span><p><strong>Allot your first resident</strong><small>Rent, deposit and notice defaults are already filled in.</small></p></div></div>
             </div>}
 
             {error && <p className="auth-error" role="alert">{error}</p>}
