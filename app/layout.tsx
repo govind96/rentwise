@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL ?? 'http://localhost:3000'),
   title: 'RentWise — Property management for PGs and hostels',
   description: 'Manage rooms, residents, rent, maintenance and documents for Indian PGs and hostels from one owner workspace.',
+  icons: { icon: '/rentwise-mark.png', apple: '/rentwise-mark.png' },
   openGraph: {
     title: 'RentWise',
     description: 'Your property, tenants and rent — clearly under control.',

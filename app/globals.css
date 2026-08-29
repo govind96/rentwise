@@ -167,21 +167,12 @@ a.main-button, a.quiet-button { text-decoration: none; }
 /* ---------- brand mark ---------- */
 .brand-mark {
   --mark-size: 32px;
-  position: relative; display: inline-block; width: var(--mark-size); height: var(--mark-size);
-  flex: 0 0 var(--mark-size); border-radius: calc(var(--mark-size) * .3);
-  background: linear-gradient(140deg, #6366f1, #4338ca);
-  box-shadow: 0 5px 14px var(--lav-glow), inset 0 1px 0 rgba(255, 255, 255, .28);
-  overflow: hidden; isolation: isolate;
+  position: relative; display: inline-grid; place-items: center; width: var(--mark-size); height: var(--mark-size);
+  flex: 0 0 var(--mark-size); overflow: visible;
 }
-.brand-mark::before {
-  content: ""; position: absolute; z-index: 1; left: 22%; top: 18%; width: 56%; height: 58%;
-  border: max(2px, calc(var(--mark-size) * .07)) solid rgba(255, 255, 255, .96); border-bottom: 0;
-  border-radius: 99px 99px 0 0;
-}
-.brand-mark::after {
-  content: ""; position: absolute; z-index: 2; left: 50%; bottom: 12%; width: 26%; aspect-ratio: 1;
-  transform: translateX(-50%); border-radius: 50%;
-  background: #b9f7dc; box-shadow: 0 0 0 max(1.5px, calc(var(--mark-size) * .05)) rgba(10, 8, 30, .55);
+.brand-mark img {
+  display: block; width: 128%; height: 128%; max-width: none; object-fit: contain;
+  filter: drop-shadow(0 4px 7px var(--lav-glow));
 }
 
 /* ---------- shell ---------- */
