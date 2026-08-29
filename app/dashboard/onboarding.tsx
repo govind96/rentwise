@@ -156,9 +156,9 @@ export default function PropertyOnboarding({ existingNames, onClose, onCreated, 
       <section ref={dialogRef} className="property-onboarding" role="dialog" aria-modal="true" aria-labelledby="property-onboarding-title">
         <aside className="onboarding-rail">
           <button className="onboarding-brand" type="button" onClick={onClose}><BrandMark /><strong>RentWise</strong></button>
-          <div><p className="overline">PROPERTY SETUP</p><h2>Build the operating system for your property.</h2><p>Map how your PG actually runs—from mixed sharing to meals, electricity and tenant policy.</p></div>
+          <div><p className="overline">PROPERTY SETUP</p><h2>Set up how your property runs.</h2><p>Add its rooms, beds, services, rent defaults and resident policies.</p></div>
           <ol>{steps.map((item, index) => <li key={item.label} className={index === step ? 'active' : index < step ? 'done' : ''}><span>{index < step ? '✓' : index + 1}</span><p><strong>{item.label}</strong><small>{item.hint}</small></p></li>)}</ol>
-          <p className="onboarding-save">No account needed · Saved in this browser</p>
+          <p className="onboarding-save">Owner account · Changes saved automatically</p>
         </aside>
 
         <div ref={mainRef} className="onboarding-main">

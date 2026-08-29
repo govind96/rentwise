@@ -3,8 +3,8 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL ?? 'http://localhost:3000'),
-  title: 'RentWise — AI-native property operations',
-  description: 'The AI operating system for Indian PGs and hostels: rent, occupancy, maintenance and documents — on autopilot.',
+  title: 'RentWise — Property management for PGs and hostels',
+  description: 'Manage rooms, residents, rent, maintenance and documents for Indian PGs and hostels from one owner workspace.',
   openGraph: {
     title: 'RentWise',
     description: 'Your property, tenants and rent — clearly under control.',

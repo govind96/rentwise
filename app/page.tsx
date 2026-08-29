@@ -49,7 +49,7 @@ export default function Landing() {
 
       <header className="land-nav">
         <Link className="land-brand" href="/">
-          <BrandMark /><strong>RentWise</strong><em>OS</em>
+          <BrandMark /><strong>RentWise</strong>
         </Link>
         <nav className="land-links">
           <a href="#product">Product</a>
@@ -59,8 +59,8 @@ export default function Landing() {
         <div className="land-nav-actions">
           <ThemeToggle compact />
           <a className="main-button" href="/dashboard">
-            <span className="nav-label-full">Open owner workspace</span>
-            <span className="nav-label-short">Open workspace</span>
+            <span className="nav-label-full">Go to dashboard</span>
+            <span className="nav-label-short">Dashboard</span>
           </a>
         </div>
       </header>
@@ -68,16 +68,16 @@ export default function Landing() {
       <main>
         {/* ---------- hero ---------- */}
         <section className="hero land-hero">
-          <span className="hero-badge"><i aria-hidden="true" />AI-native property OS · Made for India</span>
-          <h1>Your rooms, rent and repairs, <em>under control</em>.</h1>
+          <span className="hero-badge"><i aria-hidden="true" />Property management for Indian PGs &amp; hostels</span>
+          <h1>Rent, rooms and repairs, <em>in one place</em>.</h1>
           <p className="land-sub">
-            A clear owner workspace for collections, occupancy, residents and maintenance —
-            with a copilot that always knows your property. Secure, owner-scoped and ready for daily operations.
+            Manage occupancy, resident records, collections and maintenance from one owner workspace.
+            Ask RentWise to find current dues, vacant beds and open repairs.
           </p>
 
           <div className="hero-ctas">
-            <a className="main-button" href="/dashboard">Open owner workspace →</a>
-            <a className="quiet-button" href="/dashboard?newProperty=1">Set up a property</a>
+            <a className="main-button" href="/dashboard">Go to dashboard →</a>
+            <a className="quiet-button" href="/dashboard?newProperty=1">Add a property</a>
           </div>
 
           <a className="land-prompt" href="/dashboard" aria-label="Open Ask RentWise in the owner workspace">
@@ -85,9 +85,9 @@ export default function Landing() {
             <span className="land-prompt-copy" aria-live="polite">
               <em key={promptExamples[exampleIndex]}>{promptExamples[exampleIndex]}</em>
             </span>
-            <b>Ask<i>↗</i></b>
+            <b>Open<i>↗</i></b>
           </a>
-          <p className="land-hint">SECURE OWNER ACCESS · DURABLE RECORDS · BUILT FOR INDIA</p>
+          <p className="land-hint">OWNER-ONLY ACCESS · RENT &amp; OCCUPANCY RECORDS · BUILT FOR INDIA</p>
         </section>
 
         {/* ---------- pure-CSS product preview ---------- */}
@@ -132,7 +132,7 @@ export default function Landing() {
           <header className="land-section-head concise">
             <div>
               <p className="overline">The daily essentials</p>
-              <h2>Less admin. Total visibility.</h2>
+              <h2>Everything you need to run the property.</h2>
             </div>
             <p>Rent cycles, bed maps, repairs and compliance — modelled the way Indian PGs actually run.</p>
           </header>
@@ -140,8 +140,8 @@ export default function Landing() {
           <div className="bento-grid">
             <article className="bento-card wide">
               <span className="bento-icon" aria-hidden="true">₹</span>
-              <h3>A rent ledger that runs itself</h3>
-              <p>Security deposit, prorated first month, then one monthly cycle from the month after allotment. Payments are applied oldest-due-first, so every balance stays exact — even across split UPI payments.</p>
+              <h3>A clear rent ledger</h3>
+              <p>Track deposits, prorated move-in rent and monthly dues. Each receipt is applied to the oldest unpaid charge first, including split UPI payments.</p>
               <div className="bento-visual">
                 <div className="vz-ledger" aria-hidden="true">
                   <div><i>₹</i><b>Mahi Kumari · Room 1</b><em className="ok">Clear</em></div>
@@ -153,8 +153,8 @@ export default function Landing() {
 
             <article className="bento-card">
               <span className="bento-icon tone-cyan" aria-hidden="true">▦</span>
-              <h3>One live bed map</h3>
-              <p>Every room and bed at a glance — allot a vacant bed in seconds.</p>
+              <h3>Room and bed occupancy</h3>
+              <p>See every occupied and vacant bed, then allot a resident from the same view.</p>
               <div className="bento-visual">
                 <div className="vz-beds" aria-hidden="true">
                   <i className="on" /><i className="on" /><i /><i className="on" /><i className="on" /><i /><i className="on" /><i />
@@ -165,8 +165,8 @@ export default function Landing() {
 
             <article className="bento-card">
               <span className="bento-icon tone-violet" aria-hidden="true">✦</span>
-              <h3>Ask RentWise copilot</h3>
-              <p>Answers pulled live from your records — dues, vacancies, repairs.</p>
+              <h3>Ask about your property</h3>
+              <p>Find current dues, vacancies and repair requests from your records.</p>
               <div className="bento-visual">
                 <div className="vz-chat" aria-hidden="true">
                   <span>Who still owes rent this month?</span>
@@ -177,8 +177,8 @@ export default function Landing() {
 
             <article className="bento-card">
               <span className="bento-icon tone-amber" aria-hidden="true">◇</span>
-              <h3>A maintenance desk that closes loops</h3>
-              <p>Track every repair from first report to resolved.</p>
+              <h3>Maintenance tracking</h3>
+              <p>Record each issue and track it from report to resolution.</p>
               <div className="bento-visual">
                 <div className="vz-orders" aria-hidden="true"><em>Urgent · 1</em><em>In progress · 2</em><em>Resolved · 7</em></div>
               </div>
@@ -186,8 +186,8 @@ export default function Landing() {
 
             <article className="bento-card wide">
               <span className="bento-icon" aria-hidden="true">⌑</span>
-              <h3>Compliance without the chase</h3>
-              <p>Identity proofs, rental agreements and notice periods tracked per resident — with consent capture, secure uploads and clear review status.</p>
+              <h3>Resident documents, organised</h3>
+              <p>Keep identity proofs, rental agreements and notice periods with each resident, including consent and review status.</p>
               <div className="bento-visual">
                 <div className="vz-docs" aria-hidden="true"><em>Aadhaar · Verified</em><em>Agreement · Signed</em><em>Notice · 30 days</em></div>
               </div>
@@ -199,29 +199,29 @@ export default function Landing() {
         <section className="steps" id="how">
           <header className="land-section-head concise">
             <div>
-              <p className="overline">From keys to clarity</p>
-              <h2>Set up in one afternoon.</h2>
+              <p className="overline">Property setup</p>
+              <h2>Start with your actual room layout.</h2>
             </div>
-            <p>No spreadsheets to import, no consultants to hire. Model the property, then let the workspace do the bookkeeping.</p>
+            <p>Add your rooms, beds and rent rules once, then use the workspace for daily operations.</p>
           </header>
           <div className="steps-grid">
             <article className="step-card">
               <span className="step-num">1</span>
-              <h3>Describe your property</h3>
-              <p>Rooms, sharing mix, meals, electricity and tenant policy — captured in a five-step wizard that understands mixed layouts.</p>
-              <span className="step-tag">≈ 10 minutes</span>
+              <h3>Add the property details</h3>
+              <p>Set up rooms, sharing types, meals, electricity and resident policies in a guided five-step flow.</p>
+              <span className="step-tag">Property setup</span>
             </article>
             <article className="step-card">
               <span className="step-num">2</span>
-              <h3>Allot beds, collect rent</h3>
-              <p>Prorated move-ins are calculated to the day. Record UPI receipts and the waterfall ledger allocates them for you.</p>
+              <h3>Allot beds and record payments</h3>
+              <p>Move-in rent is prorated by date. Record UPI, cash or bank payments against each resident’s outstanding charges.</p>
               <span className="step-tag">Day one</span>
             </article>
             <article className="step-card">
               <span className="step-num">3</span>
-              <h3>Let the copilot keep watch</h3>
-              <p>A daily brief surfaces who to follow up with, which beds are free and what needs fixing — before you ask.</p>
-              <span className="step-tag">Every morning</span>
+              <h3>Review daily actions</h3>
+              <p>The dashboard highlights overdue rent, vacant beds and unresolved repairs that need attention.</p>
+              <span className="step-tag">Daily overview</span>
             </article>
           </div>
         </section>
@@ -303,13 +303,13 @@ export default function Landing() {
         <section className="cta-band">
           <div className="cta-panel">
             <p className="overline">Ready when you are</p>
-            <h2>Run your PG like a <em>product</em>.</h2>
-            <p>Open the seeded workspace and click around — allot a bed, record a receipt, ask the copilot. Your changes stay private to this browser.</p>
+            <h2>Manage your PG <em>in one place</em>.</h2>
+            <p>Sign in to add your property, allot beds, record payments and keep daily operations up to date.</p>
             <div className="cta-actions">
-              <a className="main-button" href="/dashboard">Open owner workspace →</a>
-              <a className="quiet-button light" href="/dashboard?newProperty=1">Set up a property</a>
+              <a className="main-button" href="/dashboard">Go to dashboard →</a>
+              <a className="quiet-button light" href="/dashboard?newProperty=1">Add a property</a>
             </div>
-            <p className="cta-note">FREE DURING THE MVP · NO ACCOUNT · NOTHING TO INSTALL</p>
+            <p className="cta-note">OWNER ACCOUNT REQUIRED · NO APP TO INSTALL</p>
           </div>
         </section>
       </main>
@@ -317,13 +317,13 @@ export default function Landing() {
       <footer className="land-footer">
         <div className="land-footer-inner">
           <div className="foot-col">
-            <span className="land-brand"><BrandMark /><strong>RentWise</strong>&nbsp;<em>OS</em></span>
-            <p className="foot-note">The operating system for Indian PGs and hostels. Owner-scoped records, secure documents and an auditable rent ledger.</p>
+            <span className="land-brand"><BrandMark /><strong>RentWise</strong></span>
+            <p className="foot-note">Property management for Indian PGs, hostels and co-living spaces. Rooms, residents, rent, repairs and documents in one workspace.</p>
           </div>
           <div className="land-footer-cols">
             <div className="foot-col">
               <span>Product</span>
-              <a href="/dashboard">Owner workspace</a>
+              <a href="/dashboard">Dashboard</a>
               <a href="/privacy">Privacy</a>
               <a href="/terms">Terms</a>
               <a href="#product">Features</a>
