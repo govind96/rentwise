@@ -771,7 +771,7 @@ function Workspace() {
         <main className="view-stage" key={view}>
         <header className="page-head">
           <div><p className="overline">{copy.eyebrow}</p><h1>{view === 'overview' ? <><em>Good {timeOfDay()}</em>{demo ? ', Govind.' : '.'}</> : copy.title}</h1><p>{copy.subtitle}</p></div>
-          <div className="head-actions"><span className="live-state"><i /> Live</span><button className="quiet-button" onClick={() => { setView('tenants'); setFilter('pending'); }}>⌕ Find tenant</button><button className="main-button" onClick={() => setModal('tenant')}>＋ New allotment</button></div>
+          {view === 'overview' && <div className="head-actions"><span className="live-state"><i /> Live</span><button className="quiet-button" onClick={() => { setView('tenants'); setFilter('pending'); }}>⌕ Find tenant</button><button className="main-button" onClick={() => setModal('tenant')}>＋ New allotment</button></div>}
         </header>
 
         {view === 'overview' && (
