@@ -721,7 +721,7 @@ a.main-button, a.quiet-button { text-decoration: none; }
 
 /* ---------- dialogs ---------- */
 .modal-layer, .drawer-layer {
-  position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px;
+  position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 20px;
   background: rgba(5, 6, 12, .58); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   animation: fade-in .2s ease both;
 }
@@ -897,7 +897,7 @@ a.main-button, a.quiet-button { text-decoration: none; }
 .assistant-modal footer { border-top: 1px solid var(--line); padding: 12px 22px; color: var(--muted); font-size: 11px; display: flex; justify-content: space-between; gap: 10px; }
 
 .toast {
-  position: fixed; z-index: 30; bottom: 26px; left: 50%; transform: translateX(-50%);
+  position: fixed; z-index: 50; bottom: 26px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 9px;
   background: rgba(10, 12, 22, .92); color: #fff; padding: 12px 20px; border-radius: 999px;
   border: 1px solid rgba(129, 140, 248, .35); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -1271,7 +1271,7 @@ a.main-button, a.quiet-button { text-decoration: none; }
 
 /* ---------- property onboarding wizard ---------- */
 .onboarding-layer {
-  position: fixed; z-index: 22; inset: 0; display: flex; padding: 26px 20px; overflow-y: auto;
+  position: fixed; z-index: 70; inset: 0; display: flex; padding: 26px 20px; overflow-y: auto;
   background: rgba(5, 6, 12, .62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   animation: fade-in .2s ease both;
 }
@@ -1460,7 +1460,9 @@ legend small { font-weight: 500; color: var(--muted); margin-left: 6px; font-siz
     width: 40px; height: 40px; flex: 0 0 40px; border: 0; border-radius: 11px; font-size: 17px; color: #fff;
     background: linear-gradient(135deg, #4f46e5, #4338ca); box-shadow: 0 6px 16px var(--lav-glow);
   }
-  .mobile-property-switch { display: block; margin-bottom: 12px; }
+  .mobile-property-switch { position: relative; display: block; margin-bottom: 12px; }
+  .mobile-property-switch .prop-backdrop { z-index: 38; }
+  .mobile-property-switch .prop-menu { z-index: 39; }
   .mobile-property-switch .property-select { background: var(--paper); border-color: var(--line); color: var(--ink); }
   .mobile-property-switch .property-select small, .mobile-property-switch .property-select em { color: var(--muted); }
   .mobile-property-switch .property-select > b { color: var(--muted); }
@@ -1528,7 +1530,20 @@ legend small { font-weight: 500; color: var(--muted); margin-left: 6px; font-siz
   .canvas-mix { grid-template-columns: 1fr; }
   .review-grid { grid-template-columns: repeat(2, 1fr); }
   .drawer { width: 100%; }
-  .modal { padding: 22px 20px; }
+  .drawer-body { padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
+  .modal-layer:not(.onboarding-layer) {
+    align-items: end;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  }
+  .modal {
+    width: 100%;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-bottom));
+    padding: 22px 20px calc(22px + env(safe-area-inset-bottom));
+  }
+  .toast {
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    max-width: calc(100% - 24px);
+  }
   .assistant-modal form input { height: 48px; }
   .assistant-modal form button { width: 48px; height: 48px; flex-basis: 48px; }
   .cta-panel { padding: 54px 22px; }
