@@ -855,7 +855,7 @@ function Overview({ propertyName, demo, tenants, orders, metrics, inventory, ava
 
     <section className="intelligence-row">
       <article className="ai-brief">
-        <div className="ai-orb"><i /><i /><i /></div>
+        <div className="ai-signal"><span>✓</span><strong>Workspace snapshot</strong></div>
         <div className="brief-copy"><p className="overline">RENTWISE CHECK-IN</p><h2>You’re on top of things. Here are the moments worth your attention.</h2><p><strong>{money.format(concentratedDue)}</strong> is concentrated across the two largest balances{pending.length > 2 ? '' : ''}, <strong>{availableBeds} beds</strong> are ready to allot{topOrder ? `, and one repair needs review` : ''}.</p></div>
         <button onClick={() => onView('rent')}>Walk me through it <span>↗</span></button>
       </article>
