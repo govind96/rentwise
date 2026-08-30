@@ -12,7 +12,9 @@ export function getSupabaseClient() {
         return response.json() as Promise<{ url: string; publishableKey: string }>;
       })
       .then(({ url, publishableKey }) => createClient(url, publishableKey, {
-        auth: { flowType: 'pkce', detectSessionInUrl: true, persistSession: true },
+        // The callback route exchanges the code itself, so automatic URL parsing
+        // must stay off to prevent a second exchange consuming the verifier.
+        auth: { flowType: 'pkce', detectSessionInUrl: false, persistSession: true },
       }));
   }
   return clientPromise;
