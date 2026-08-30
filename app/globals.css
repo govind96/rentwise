@@ -659,7 +659,8 @@ a.main-button, a.quiet-button { text-decoration: none; }
   box-shadow: 0 5px 14px var(--lav-glow), inset 0 1px 0 rgba(255, 255, 255, .26);
   transition: filter .16s ease, transform .16s ease;
 }
-.remind-link { display: inline-flex; align-items: center; justify-content: center; width: 38px; flex: 0 0 38px; border: 1px solid var(--line); border-radius: 10px; color: var(--green); font-size: 16px; text-decoration: none; transition: color .18s ease, border-color .18s ease, background .18s ease; }
+.remind-link { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 38px; padding: 0 10px; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 10px; color: var(--green); font-size: 16px; text-decoration: none; transition: color .18s ease, border-color .18s ease, background .18s ease; }
+.remind-link::after { content: 'Remind'; font: 700 10px var(--font-ui); }
 .remind-link:hover { border-color: var(--green); background: var(--green-soft); }
 .head-side { display: flex; align-items: center; gap: 10px; }
 .record-button:hover { filter: brightness(1.08); transform: translateY(-1px); }
@@ -682,6 +683,9 @@ a.main-button, a.quiet-button { text-decoration: none; }
 
 /* ---------- documents ---------- */
 .document-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.payment-proof-queue { margin-bottom: 16px; border-color: color-mix(in srgb, var(--lav) 32%, var(--line)); }
+.queue-copy { max-width: 70ch; margin: -4px 0 16px; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+.proof-list { display: grid; }.proof-list article { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); }.proof-list .main-button { min-height: 34px; padding: 0 12px; font-size: 12px; }
 .document-list article { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
 .document-list article:first-of-type { border-top: 0; padding-top: 4px; }
 .document-list article > div:nth-child(2) { flex: 1; min-width: 180px; display: grid; gap: 4px; justify-items: start; }
