@@ -44,11 +44,11 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="landing">
+    <div className="landing" id="top">
       <div className="land-glow" aria-hidden="true" />
 
       <header className="land-nav">
-        <Link className="land-brand" href="/">
+        <Link className="land-brand" href="/#top">
           <BrandMark /><strong>RentWise</strong>
         </Link>
         <nav className="land-links">
@@ -58,7 +58,7 @@ export default function Landing() {
         </nav>
         <div className="land-nav-actions">
           <ThemeToggle compact />
-          <a className="main-button" href="/dashboard">
+          <a className="main-button" href="/login">
             <span className="nav-label-full">Go to dashboard</span>
             <span className="nav-label-short">Dashboard</span>
           </a>
@@ -75,15 +75,15 @@ export default function Landing() {
           </p>
 
           <div className="hero-ctas">
-            <a className="main-button" href="/dashboard">Go to dashboard →</a>
-            <a className="hero-secondary-link" href="/dashboard?newProperty=1">Add your first property <span>→</span></a>
+            <a className="main-button" href="/login">Go to dashboard →</a>
+            <a className="hero-secondary-link" href="/login">Add your first property <span>→</span></a>
           </div>
           <p className="land-hint">OWNER-ONLY ACCESS · RENT &amp; OCCUPANCY RECORDS · BUILT FOR INDIA</p>
         </section>
 
         {/* ---------- pure-CSS product preview ---------- */}
         <div className="hero-preview">
-          <a className="land-prompt hero-floating-prompt" href="/dashboard" aria-label="Open Ask RentWise in the owner workspace">
+          <a className="land-prompt hero-floating-prompt" href="/login" aria-label="Open Ask RentWise in the owner workspace">
             <span className="prompt-orb" aria-hidden="true">✦</span>
             <span className="land-prompt-copy" aria-live="polite">
               <em key={promptExamples[exampleIndex]}>{promptExamples[exampleIndex]}</em>
@@ -282,7 +282,7 @@ export default function Landing() {
                     </div>
                     <i>{selectedModel === index ? '✓' : index + 1}</i>
                   </button>
-                  {selectedModel === index && <Link className="model-start" href={`/dashboard?newProperty=1&preset=${model.preset}`}>Start with {model.title} →</Link>}
+                  {selectedModel === index && <a className="model-start" href="/login">Start with {model.title} →</a>}
                 </article>
               ))}
             </div>

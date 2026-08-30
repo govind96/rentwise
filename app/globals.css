@@ -1042,11 +1042,11 @@ a.main-button, a.quiet-button { text-decoration: none; }
 .land-hero::before {
   content: ""; position: absolute; z-index: -2; pointer-events: none;
   left: 50%; bottom: 0; transform: translateX(-50%);
-  width: min(1672px, 100vw); height: 430px;
-  background: url('/rentwise-paper-city-bg.png') center bottom / cover no-repeat;
-  opacity: .34;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.18) 18%, #000 48%);
-  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.18) 18%, #000 48%);
+  width: min(1800px, 118vw); height: 452px;
+  background: url('/rentwise-paper-city-bg.png') center bottom / 112% auto no-repeat;
+  opacity: .25; filter: saturate(.82) contrast(.96);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.08) 15%, rgba(0,0,0,.76) 48%, #000 72%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.08) 15%, rgba(0,0,0,.76) 48%, #000 72%, transparent 100%);
 }
 .land-hero::after {
   content: ""; position: absolute; z-index: -1; pointer-events: none;
@@ -1729,6 +1729,32 @@ legend small { font-weight: 500; color: var(--muted); margin-left: 6px; font-siz
 .prod-auth-gate .main-button, .prod-auth-gate .quiet-button { min-width: 230px; justify-content: center; }
 .gate-spinner { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--lav); border-radius: 50%; animation: gate-spin .8s linear infinite; }
 @keyframes gate-spin { to { transform: rotate(360deg); } }
+.tenant-shell { min-height: 100vh; min-height: 100dvh; color: var(--ink); background: radial-gradient(900px 420px at 85% -10%, var(--lav-soft), transparent 70%), var(--canvas); padding-bottom: 72px; }
+.tenant-nav { max-width: 1120px; min-height: 74px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--line); }
+.tenant-nav > span { color: var(--muted); font: 600 11px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; margin-left: auto; }
+.tenant-nav .compact { min-width: auto; padding: 8px 12px; font-size: 12px; }
+.tenant-hero { max-width: 1120px; margin: 0 auto; padding: clamp(42px, 8vw, 84px) 24px 34px; display: flex; justify-content: space-between; gap: 28px; align-items: end; }
+.tenant-hero h1 { margin: 8px 0; font: 700 clamp(38px, 6vw, 64px)/1 var(--font-display); letter-spacing: -.055em; }
+.tenant-hero p:not(.overline) { margin: 0; color: var(--muted); font-size: 15px; }
+.tenant-balance { min-width: 270px; padding: 20px 22px; border: 1px solid var(--line); border-radius: 18px; background: color-mix(in srgb, var(--paper) 85%, transparent); box-shadow: var(--shadow-sm); }
+.tenant-balance span, .tenant-balance small { display: block; color: var(--muted); font-size: 12px; }
+.tenant-balance strong { display: block; margin: 8px 0; font: 700 28px/1 var(--font-display); letter-spacing: -.04em; }
+.tenant-grid { max-width: 1120px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.tenant-card { min-width: 0; padding: 24px; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); box-shadow: var(--shadow-sm); }
+.tenant-card h2 { margin: 7px 0 18px; font: 700 24px/1.15 var(--font-display); letter-spacing: -.035em; }
+.tenant-card h2 small { color: var(--muted); font: 500 12px var(--font-sans); letter-spacing: 0; }
+.tenant-card > p:not(.overline) { margin: -6px 0 17px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.tenant-list { display: grid; }
+.tenant-list > div { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+.tenant-list span { min-width: 0; display: grid; gap: 3px; }
+.tenant-list b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.tenant-list small { color: var(--muted); font-size: 11px; }
+.tenant-list em { flex: none; color: var(--muted); font: 600 10px var(--font-mono); letter-spacing: .04em; text-transform: uppercase; font-style: normal; }
+.tenant-list em.ok { color: var(--aurora); }.tenant-list em.due { color: #cf6845; }
+.tenant-form { display: grid; gap: 10px; }.tenant-form input, .tenant-form select { width: 100%; min-height: 42px; padding: 10px 12px; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); font: 500 13px var(--font-sans); }.tenant-form input[type='file'] { padding: 9px; font-size: 11px; }.tenant-form .main-button { justify-content: center; margin-top: 2px; }
+.compact-list { margin-top: 18px; }.compact-list > div { padding-bottom: 0; }.tenant-toast { position: fixed; z-index: 10; left: 50%; bottom: 22px; transform: translateX(-50%); max-width: calc(100vw - 32px); margin: 0; padding: 11px 15px; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; background: var(--paper); box-shadow: var(--shadow-md); font-size: 13px; }
+.tenant-empty, .tenant-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 28px; text-align: center; }.tenant-empty h1 { margin: 0; font: 700 clamp(30px, 5vw, 48px)/1.05 var(--font-display); letter-spacing: -.05em; }.tenant-empty p:not(.overline) { max-width: 450px; margin: 0 0 8px; color: var(--muted); line-height: 1.7; }
+@media (max-width: 680px) { .tenant-nav { min-height: 64px; padding: 0 16px; gap: 10px; }.tenant-nav > span { display: none; }.tenant-nav .theme-toggle { margin-left: auto; }.tenant-hero { padding: 44px 16px 24px; display: grid; }.tenant-balance { min-width: 0; }.tenant-grid { grid-template-columns: 1fr; padding: 0 16px; gap: 12px; }.tenant-card { padding: 19px; }.tenant-list > div { gap: 8px; }.tenant-list em { max-width: 106px; text-align: right; }.tenant-shell { padding-bottom: 40px; } }
 .consent-check { display: grid !important; grid-template-columns: 20px 1fr; gap: 10px; align-items: start; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); }
 .consent-check input { width: 18px !important; height: 18px !important; margin-top: 2px; }
 .consent-check span { font-size: 12px; line-height: 1.55; color: var(--muted); }

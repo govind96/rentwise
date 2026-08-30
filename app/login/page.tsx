@@ -13,7 +13,7 @@ export default function Login() {
   return (
     <div className="auth-wrap">
       <section className="auth-panel">
-        <Link className="land-brand" href="/" style={{ color: '#fff' }}>
+        <Link className="land-brand" href="/#top" style={{ color: '#fff' }}>
           <BrandMark /><strong>RentWise</strong>
         </Link>
         <div className="auth-story">
@@ -25,21 +25,21 @@ export default function Login() {
             ))}
           </ul>
         </div>
-        <p className="auth-panel-foot">SECURE OWNER WORKSPACE</p>
+        <p className="auth-panel-foot">SECURE OWNER &amp; RESIDENT ACCESS</p>
       </section>
 
       <section className="auth-stage">
         <div className="auth-theme"><ThemeToggle compact /></div>
         <div className="auth-card">
           <span className="land-brand auth-brand"><BrandMark /><strong>RentWise</strong></span>
-          <p className="overline">Owner access</p>
-          <h1>Sign in to your workspace</h1>
+          <p className="overline">Secure access</p>
+          <h1>Sign in to RentWise</h1>
           <p className="auth-copy">
-            Your properties, residents, receipts and documents stay scoped to
-            your verified account and are saved automatically.
+            Owners manage the property workspace; residents use the same secure sign-in
+            to see their rent, receipts, documents and maintenance requests.
           </p>
           <AuthForm />
-          <Link className="quiet-button full auth-cta" href="/">Back to the product page</Link>
+          <Link className="quiet-button full auth-cta" href="/#product">Back to the product page</Link>
           <p className="auth-foot">Encrypted in transit · Owner-scoped access · Audit history</p>
         </div>
       </section>

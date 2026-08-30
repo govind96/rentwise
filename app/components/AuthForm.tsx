@@ -23,7 +23,7 @@ export default function AuthForm() {
       const client = await getSupabaseClient();
       const result = mode === 'sign-in' ? await client.auth.signInWithPassword({ email, password }) : await client.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
       if (result.error) throw result.error;
-      if (mode === 'sign-up' && !result.data.session) setMessage('Check your email to confirm your account, then sign in.'); else window.location.assign('/dashboard');
+      if (mode === 'sign-up' && !result.data.session) setMessage('Check your email to confirm your account, then sign in.'); else window.location.assign('/auth/callback');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'We could not sign you in.'); } finally { setBusy(false); }
   }
   return <>

@@ -7,6 +7,18 @@ export type OwnerContext = {
   name: string;
 };
 
+export type ResidentContext = {
+  tenancyId: number;
+  ownerId: number;
+  propertyId: number;
+  propertyName: string;
+  tenantName: string;
+  email: string;
+  room: string;
+  bed: string;
+  monthlyRent: number;
+};
+
 type ExternalUser = { id: string; email?: string; user_metadata?: { full_name?: string; name?: string } };
 
 function decodeDisplayName(request: Request) {
@@ -34,9 +46,8 @@ async function ensureOwnerIdentitySchema() {
   await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_owners_platform_user_id ON owners(platform_user_id) WHERE platform_user_id IS NOT NULL').run();
 }
 
-/** Resolve the Sites-authenticated visitor and lazily provision their owner row. */
-export async function getOwnerContext(request: Request): Promise<OwnerContext | null> {
-  if (!env.DB) return null;
+/** Resolve either a Sites identity or a verified Supabase session. */
+export async function getAuthenticatedIdentity(request: Request): Promise<{ platformUserId: string; email: string; name: string } | null> {
   let platformUserId = request.headers.get('oai-authenticated-user-id')?.trim() ?? '';
   let email = request.headers.get('oai-authenticated-user-email')?.trim().toLowerCase() ?? '';
   let name = decodeDisplayName(request);
@@ -51,6 +62,15 @@ export async function getOwnerContext(request: Request): Promise<OwnerContext | 
     platformUserId = `supabase:${user.id}`; email = user.email.trim().toLowerCase(); name = String(user.user_metadata?.full_name || user.user_metadata?.name || '').trim().slice(0, 120);
   }
   if (!platformUserId || !email || email.length > 254) return null;
+  return { platformUserId, email, name };
+}
+
+/** Resolve an existing owner account. New accounts are never provisioned by a sign-in. */
+export async function getOwnerContext(request: Request): Promise<OwnerContext | null> {
+  if (!env.DB) return null;
+  const identity = await getAuthenticatedIdentity(request);
+  if (!identity) return null;
+  const { platformUserId, email, name } = identity;
 
   await ensureOwnerIdentitySchema();
   const now = new Date().toISOString();
@@ -61,6 +81,28 @@ export async function getOwnerContext(request: Request): Promise<OwnerContext | 
   await env.DB.prepare(`UPDATE owners SET platform_user_id = ?, display_name = CASE WHEN ? != '' THEN ? ELSE display_name END, last_seen_at = ? WHERE id = ?`)
     .bind(platformUserId, name, name, now, owner.id).run();
   return { id: owner.id, platformUserId, email: owner.email, name: name || owner.display_name };
+}
+
+/**
+ * Resident access is granted by the owner adding the resident's email to their
+ * active tenancy. This deliberately has no self-service provisioning path.
+ */
+export async function getResidentContext(request: Request): Promise<ResidentContext | null> {
+  if (!env.DB) return null;
+  const identity = await getAuthenticatedIdentity(request);
+  if (!identity) return null;
+  return env.DB.prepare(`SELECT t.id AS tenancy_id, p.owner_id, p.id AS property_id, p.name AS property_name,
+      t.tenant_name, t.email, b.room_no, b.bed_no, t.monthly_rent
+    FROM tenancies t
+    JOIN beds b ON b.id = t.bed_id
+    JOIN properties p ON p.id = b.property_id
+    WHERE lower(t.email) = ? AND t.status IN ('active', 'notice')
+    ORDER BY CASE t.status WHEN 'active' THEN 0 ELSE 1 END, t.id DESC LIMIT 1`)
+    .bind(identity.email).first<{ tenancy_id: number; owner_id: number; property_id: number; property_name: string; tenant_name: string; email: string; room_no: string; bed_no: string; monthly_rent: number }>()
+    .then((row) => row ? {
+      tenancyId: row.tenancy_id, ownerId: row.owner_id, propertyId: row.property_id, propertyName: row.property_name,
+      tenantName: row.tenant_name, email: row.email, room: row.room_no, bed: row.bed_no, monthlyRent: row.monthly_rent,
+    } : null);
 }
 
 /** Backwards-compatible helper used by route handlers. */
