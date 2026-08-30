@@ -71,31 +71,25 @@ export default function Landing() {
           <span className="hero-badge"><i aria-hidden="true" />Property management for Indian PGs &amp; hostels</span>
           <h1>Rent, rooms and repairs, <em>in one place</em>.</h1>
           <p className="land-sub">
-            Manage occupancy, resident records, collections and maintenance from one owner workspace.
-            Ask RentWise to find current dues, vacant beds and open repairs.
+            See occupancy, collections, residents and repairs clearly — then ask RentWise what needs attention.
           </p>
 
           <div className="hero-ctas">
             <a className="main-button" href="/dashboard">Go to dashboard →</a>
-            <a className="quiet-button" href="/dashboard?newProperty=1">Add a property</a>
+            <a className="hero-secondary-link" href="/dashboard?newProperty=1">Add your first property <span>→</span></a>
           </div>
+          <p className="land-hint">OWNER-ONLY ACCESS · RENT &amp; OCCUPANCY RECORDS · BUILT FOR INDIA</p>
+        </section>
 
-          <a className="land-prompt" href="/dashboard" aria-label="Open Ask RentWise in the owner workspace">
+        {/* ---------- pure-CSS product preview ---------- */}
+        <div className="hero-preview">
+          <a className="land-prompt hero-floating-prompt" href="/dashboard" aria-label="Open Ask RentWise in the owner workspace">
             <span className="prompt-orb" aria-hidden="true">✦</span>
             <span className="land-prompt-copy" aria-live="polite">
               <em key={promptExamples[exampleIndex]}>{promptExamples[exampleIndex]}</em>
             </span>
             <b>Open<i>↗</i></b>
           </a>
-          <p className="land-hint">OWNER-ONLY ACCESS · RENT &amp; OCCUPANCY RECORDS · BUILT FOR INDIA</p>
-
-          <div className="land-hero-visual" aria-hidden="true">
-            <img className="land-hero-art" src="/rentwise-paper-city.png" alt="" />
-          </div>
-        </section>
-
-        {/* ---------- pure-CSS product preview ---------- */}
-        <div className="hero-preview">
           <div className="preview-window" role="img" aria-label="Preview of the RentWise owner dashboard">
             <div className="pw-bar">
               <span className="pw-dot" /><span className="pw-dot" /><span className="pw-dot" />
