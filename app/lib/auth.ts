@@ -54,17 +54,13 @@ export async function getOwnerContext(request: Request): Promise<OwnerContext | 
 
   await ensureOwnerIdentitySchema();
   const now = new Date().toISOString();
-  await env.DB.prepare(`INSERT INTO owners (platform_user_id, email, display_name, created_at, last_seen_at)
-    VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(email) DO UPDATE SET
-      platform_user_id = COALESCE(owners.platform_user_id, excluded.platform_user_id),
-      display_name = CASE WHEN excluded.display_name != '' THEN excluded.display_name ELSE owners.display_name END,
-      last_seen_at = excluded.last_seen_at`)
-    .bind(platformUserId, email, name || null, now, now).run();
   const owner = await env.DB.prepare(`SELECT id, email, COALESCE(display_name, '') AS display_name
     FROM owners WHERE platform_user_id = ? OR email = ? ORDER BY platform_user_id = ? DESC LIMIT 1`)
     .bind(platformUserId, email, platformUserId).first<{ id: number; email: string; display_name: string }>();
-  return owner ? { id: owner.id, platformUserId, email: owner.email, name: owner.display_name || name } : null;
+  if (!owner) return null;
+  await env.DB.prepare(`UPDATE owners SET platform_user_id = ?, display_name = CASE WHEN ? != '' THEN ? ELSE display_name END, last_seen_at = ? WHERE id = ?`)
+    .bind(platformUserId, name, name, now, owner.id).run();
+  return { id: owner.id, platformUserId, email: owner.email, name: name || owner.display_name };
 }
 
 /** Backwards-compatible helper used by route handlers. */
