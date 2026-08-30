@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import BrandMark from '../components/BrandMark';
 import ThemeToggle from '../components/ThemeToggle';
+import AuthForm from '../components/AuthForm';
 
 const highlights = [
   { icon: '₹', title: 'Rent ledger', copy: 'Track deposits, prorated move-ins, monthly dues and receipts.' },
@@ -37,7 +38,7 @@ export default function Login() {
             Your properties, residents, receipts and documents stay scoped to
             your verified account and are saved automatically.
           </p>
-          <Link className="main-button full auth-cta" href="/signin-with-chatgpt?return_to=/dashboard">Sign in with ChatGPT →</Link>
+          <AuthForm />
           <Link className="quiet-button full auth-cta" href="/">Back to the product page</Link>
           <p className="auth-foot">Encrypted in transit · Owner-scoped access · Audit history</p>
         </div>

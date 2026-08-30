@@ -5,6 +5,7 @@ import Link from 'next/link';
 import BrandMark from '../components/BrandMark';
 import ThemeToggle from '../components/ThemeToggle';
 import PropertyOnboarding, { PropertyDraft, PropertyPreset, roomOccupancies } from './onboarding';
+import { authFetch } from '../lib/supabase-client';
 
 type View = 'overview' | 'property' | 'tenants' | 'rent' | 'bookings' | 'finance' | 'maintenance' | 'documents';
 type Tenant = {
@@ -56,7 +57,7 @@ const money = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR
 const shortMoney = (value: number) => value >= 100000 ? `₹${(value / 100000).toFixed(1)}L` : `₹${Math.round(value / 1000)}k`;
 
 async function apiRequest(url: string, init: RequestInit = {}) {
-  const response = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...(init.headers ?? {}) } });
+  const response = await authFetch(url, { ...init, headers: { 'content-type': 'application/json', ...(init.headers ?? {}) } });
   const data = await response.json().catch(() => ({})) as { error?: string };
   if (!response.ok) throw new Error(data.error || 'The request could not be completed');
   return data;
@@ -316,7 +317,7 @@ function Workspace() {
 
   function loadRealData(propertyId?: number | null) {
     const suffix = propertyId ? `?propertyId=${propertyId}` : '';
-    fetch(`/api/properties${suffix}`)
+    authFetch(`/api/properties${suffix}`)
       .then((response) => response.ok ? response.json() as Promise<{
         properties: PropertyInfo[]; property: PropertyInfo | null; beds: RealBed[]; orders: WorkOrder[]; bookings: Booking[]; expenses: Expense[]; exitNotices: ExitNotice[]; documents: TenantDocument[];
         tenants: { id: number; room: string; bed: string; name: string; phone: string | null; allotment: string;
@@ -353,7 +354,7 @@ function Workspace() {
   }
 
   useEffect(() => {
-    fetch('/api/auth/me', { cache: 'no-store' }).then(async (response) => {
+    authFetch('/api/auth/me', { cache: 'no-store' }).then(async (response) => {
       if (!response.ok) { setAccess(response.status === 401 ? 'signed-out' : 'error'); return; }
       const profile = await response.json() as { name?: string; email: string };
       setOwner({ name: profile.name || profile.email.split('@')[0], email: profile.email });
@@ -532,7 +533,7 @@ function Workspace() {
       const form = new FormData();
       form.set('tenancyId', String(selectedId)); form.set('amount', String(amount)); form.set('paidOn', String(data.get('date') || '')); form.set('mode', String(data.get('mode') || 'UPI')); form.set('reference', String(data.get('reference') || '')); form.set('idempotencyKey', crypto.randomUUID());
       const proof = data.get('proof'); if (proof instanceof File && proof.size) form.set('proof', proof);
-      void fetch('/api/payments', { method: 'POST', body: form }).then(async (response) => { const result = await response.json().catch(() => ({})) as { error?: string }; if (!response.ok) throw new Error(result.error || 'Could not save payment'); return result; })
+      void authFetch('/api/payments', { method: 'POST', body: form }).then(async (response) => { const result = await response.json().catch(() => ({})) as { error?: string }; if (!response.ok) throw new Error(result.error || 'Could not save payment'); return result; })
         .then(() => { showToast(`${money.format(amount)} saved to your ledger`); loadRealData(activePropertyId); })
         .catch((error: Error) => showToast(error.message));
       return;
@@ -652,7 +653,7 @@ function Workspace() {
     const form = new FormData(event.currentTarget);
     form.set('consent', form.get('consent') ? 'true' : 'false');
     setModal(null); showToast('Uploading document…');
-    void fetch('/api/documents', { method: 'POST', body: form }).then(async (response) => {
+    void authFetch('/api/documents', { method: 'POST', body: form }).then(async (response) => {
       const data = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(data.error || 'Upload failed');
       showToast('Document uploaded for review'); loadRealData(activePropertyId);

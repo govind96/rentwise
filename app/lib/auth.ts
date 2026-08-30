@@ -7,6 +7,8 @@ export type OwnerContext = {
   name: string;
 };
 
+type ExternalUser = { id: string; email?: string; user_metadata?: { full_name?: string; name?: string } };
+
 function decodeDisplayName(request: Request) {
   const encoded = request.headers.get('oai-authenticated-user-full-name');
   if (!encoded || request.headers.get('oai-authenticated-user-full-name-encoding') !== 'percent-encoded-utf-8') return '';
@@ -35,13 +37,23 @@ async function ensureOwnerIdentitySchema() {
 /** Resolve the Sites-authenticated visitor and lazily provision their owner row. */
 export async function getOwnerContext(request: Request): Promise<OwnerContext | null> {
   if (!env.DB) return null;
-  const platformUserId = request.headers.get('oai-authenticated-user-id')?.trim() ?? '';
-  const email = request.headers.get('oai-authenticated-user-email')?.trim().toLowerCase() ?? '';
+  let platformUserId = request.headers.get('oai-authenticated-user-id')?.trim() ?? '';
+  let email = request.headers.get('oai-authenticated-user-email')?.trim().toLowerCase() ?? '';
+  let name = decodeDisplayName(request);
+  if (!platformUserId || !email) {
+    const token = request.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1];
+    const authUrl = env.SUPABASE_URL?.replace(/\/$/, ''); const key = env.SUPABASE_PUBLISHABLE_KEY;
+    if (!token || !authUrl || !key) return null;
+    const response = await fetch(`${authUrl}/auth/v1/user`, { headers: { authorization: `Bearer ${token}`, apikey: key } });
+    if (!response.ok) return null;
+    const user = await response.json() as ExternalUser;
+    if (!user.id || !user.email) return null;
+    platformUserId = `supabase:${user.id}`; email = user.email.trim().toLowerCase(); name = String(user.user_metadata?.full_name || user.user_metadata?.name || '').trim().slice(0, 120);
+  }
   if (!platformUserId || !email || email.length > 254) return null;
 
   await ensureOwnerIdentitySchema();
   const now = new Date().toISOString();
-  const name = decodeDisplayName(request);
   await env.DB.prepare(`INSERT INTO owners (platform_user_id, email, display_name, created_at, last_seen_at)
     VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(email) DO UPDATE SET
