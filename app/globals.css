@@ -1037,21 +1037,22 @@ a.main-button, a.quiet-button { text-decoration: none; }
 .nav-label-short { display: none; }
 
 .hero { max-width: 1180px; margin: 0 auto; padding: 88px 24px 0; text-align: center; position: relative; }
-.land-hero { isolation: isolate; padding-bottom: 76px; }
-.land-hero::after {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background: radial-gradient(ellipse at 50% 42%, var(--canvas) 0 29%, color-mix(in srgb, var(--canvas) 88%, transparent) 48%, transparent 72%);
+.land-hero { isolation: isolate; }
+.land-hero-visual {
+  position: relative; width: 100%; height: clamp(300px, 31vw, 390px); margin: 46px auto 0;
+  overflow: hidden; border: 1px solid var(--line-strong); border-radius: 28px;
+  background: #f4efe5; box-shadow: var(--shadow-lg);
+}
+.land-hero-visual::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.3), inset 0 -40px 70px rgba(17,24,39,.04);
 }
 .land-hero-art {
-  position: absolute; z-index: -2; pointer-events: none;
-  left: 50%; bottom: -48px; transform: translateX(-50%);
-  width: min(1672px, 112vw); height: calc(100% + 72px);
-  object-fit: cover; object-position: center bottom;
-  opacity: .82;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.2) 16%, #000 40%);
-  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.2) 16%, #000 40%);
+  display: block; width: 100%; height: 100%;
+  object-fit: cover; object-position: center 68%;
 }
-[data-theme='dark'] .land-hero-art { opacity: .12; filter: saturate(.65) contrast(.9); }
+[data-theme='dark'] .land-hero-visual { border-color: var(--line); background: #141827; }
+[data-theme='dark'] .land-hero-art { filter: brightness(.68) saturate(.78); }
 .hero-badge {
   display: inline-flex; align-items: center; gap: 9px; padding: 7px 16px; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--lav) 38%, transparent); background: var(--glass);
@@ -1065,7 +1066,7 @@ a.main-button, a.quiet-button { text-decoration: none; }
 .land-sub { margin: 22px auto 0; max-width: 56ch; color: var(--muted); font-size: clamp(15px, 1.6vw, 17.5px); line-height: 1.65; }
 .hero-ctas { display: flex; justify-content: center; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
 .hero-ctas .main-button, .hero-ctas .quiet-button { min-height: 48px; padding: 0 24px; font-size: 14px; border-radius: 13px; }
-.land-hint { margin: 16px auto 0; max-width: 76ch; font: 500 11px/1.6 var(--font-mono); letter-spacing: .06em; color: var(--muted); }
+.land-hint { margin: 16px auto 0; max-width: 76ch; font: 600 11.5px/1.6 var(--font-mono); letter-spacing: .06em; color: var(--ink-2); }
 
 .land-prompt {
   display: flex; align-items: center; gap: 13px; width: min(560px, 100%); margin: 34px auto 0; padding: 10px 10px 10px 18px;
@@ -1085,7 +1086,7 @@ a.main-button, a.quiet-button { text-decoration: none; }
 .land-prompt b i { font-style: normal; font-size: 12px; }
 
 /* pure-CSS product preview */
-.hero-preview { max-width: 1080px; margin: 64px auto 0; padding: 0 24px; }
+.hero-preview { max-width: 1080px; margin: 32px auto 0; padding: 0 24px; }
 .preview-window {
   border: 1px solid var(--line-strong); border-radius: 22px; overflow: hidden;
   background: var(--paper); box-shadow: var(--shadow-lg);
@@ -1597,10 +1598,10 @@ legend small { font-weight: 500; color: var(--muted); margin-left: 6px; font-siz
   .nav-label-short { display: inline; }
   .land-nav-actions .main-button { min-height: 38px; padding: 0 12px; font-size: 12px; }
   .hero { padding-top: 56px; }
-  .land-hero { padding-bottom: 52px; }
-  .land-hero-art { bottom: -24px; width: 170vw; height: calc(100% + 28px); opacity: .58; object-position: center bottom; }
-  [data-theme='dark'] .land-hero-art { opacity: .1; }
-  .hero-preview { padding: 0 16px; margin-top: 44px; }
+  .land-hero-visual { height: 248px; margin-top: 32px; border-radius: 20px; }
+  .land-hero-art { object-position: center bottom; }
+  .land-prompt-copy em { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 12.5px; line-height: 1.28; }
+  .hero-preview { padding: 0 16px; margin-top: 24px; }
   .pw-body { grid-template-columns: 1fr; }
   .pw-side { display: none; }
   .bento, .steps, .land-properties, .cta-band { padding-left: 16px; padding-right: 16px; }

@@ -68,7 +68,6 @@ export default function Landing() {
       <main>
         {/* ---------- hero ---------- */}
         <section className="hero land-hero">
-          <img className="land-hero-art" src="/rentwise-paper-city.png" alt="" aria-hidden="true" />
           <span className="hero-badge"><i aria-hidden="true" />Property management for Indian PGs &amp; hostels</span>
           <h1>Rent, rooms and repairs, <em>in one place</em>.</h1>
           <p className="land-sub">
@@ -89,6 +88,10 @@ export default function Landing() {
             <b>Open<i>↗</i></b>
           </a>
           <p className="land-hint">OWNER-ONLY ACCESS · RENT &amp; OCCUPANCY RECORDS · BUILT FOR INDIA</p>
+
+          <div className="land-hero-visual" aria-hidden="true">
+            <img className="land-hero-art" src="/rentwise-paper-city.png" alt="" />
+          </div>
         </section>
 
         {/* ---------- pure-CSS product preview ---------- */}
