@@ -737,6 +737,10 @@ a.main-button, a.quiet-button { text-decoration: none; }
 @keyframes pop-in { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
 .modal h2 { margin: 0; font-weight: 600; font-size: 22px; letter-spacing: -.02em; }
 .modal-copy { color: var(--muted); font-size: 12.5px; margin: 8px 0 20px; line-height: 1.55; }
+.invite-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); color: var(--ink); font-size: 13px; font-weight: 700; }
+.invite-summary small { color: var(--muted); font: 600 10px var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+.invite-message { margin-top: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--field); color: var(--ink-2); font-size: 12px; line-height: 1.6; }
+.invite-actions { display: flex; gap: 10px; margin-top: 16px; }.invite-actions .main-button, .invite-actions .quiet-button { flex: 1; justify-content: center; text-align: center; }.invite-note { margin: 14px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.5; }
 .modal-close, .assistant-modal header > button {
   position: absolute; right: 16px; top: 16px; border: 1px solid var(--line); background: var(--soft);
   width: 30px; height: 30px; border-radius: 10px; font-size: 16px; color: var(--ink-2);

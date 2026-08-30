@@ -46,6 +46,7 @@ type TenantDocument = {
   id: number; tenancyId: number; kind: string; label: string; originalName?: string | null;
   contentType?: string | null; sizeBytes?: number | null; status: 'requested' | 'uploaded' | 'verified' | 'rejected' | 'expired'; expiresOn?: string | null;
 };
+type ResidentInvite = { name: string; phone?: string; email: string; propertyName: string; room: string; bed: string };
 type RealBed = { id: number; room: string; bed: string; rent: number; status: 'vacant' | 'occupied' };
 type RoomInventory = [string, string[]][];
 type PortfolioProperty = PropertyInfo & {
@@ -270,6 +271,7 @@ function Workspace() {
   const [modal, setModal] = useState<'tenant' | 'payment' | 'maintenance' | 'booking' | 'expense' | 'notice' | 'document' | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [drawerId, setDrawerId] = useState<number | null>(null);
+  const [inviteTenant, setInviteTenant] = useState<ResidentInvite | null>(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [draftRent, setDraftRent] = useState(3000);
@@ -288,7 +290,7 @@ function Workspace() {
   const [exampleIndex, setExampleIndex] = useState(0);
   const backupInputRef = useRef<HTMLInputElement>(null);
 
-  const workspaceOverlayOpen = modal !== null || drawerId !== null || assistantOpen || propEditOpen;
+  const workspaceOverlayOpen = modal !== null || drawerId !== null || inviteTenant !== null || assistantOpen || propEditOpen;
 
   useEffect(() => {
     if (!workspaceOverlayOpen) return;
@@ -301,6 +303,7 @@ function Workspace() {
     const onEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || propertyOnboardingOpen) return;
       if (drawerId !== null) setDrawerId(null);
+      else if (inviteTenant !== null) setInviteTenant(null);
       else if (modal !== null) setModal(null);
       else if (assistantOpen) setAssistantOpen(false);
       else if (propEditOpen) setPropEditOpen(false);
@@ -308,7 +311,7 @@ function Workspace() {
     };
     window.addEventListener('keydown', onEscape);
     return () => window.removeEventListener('keydown', onEscape);
-  }, [assistantOpen, drawerId, modal, propEditOpen, propertyOnboardingOpen, switcherOpen]);
+  }, [assistantOpen, drawerId, inviteTenant, modal, propEditOpen, propertyOnboardingOpen, switcherOpen]);
 
   useEffect(() => {
     const cycle = window.setInterval(() => setExampleIndex((index) => (index + 1) % heroExamples.length), 4200);
@@ -517,12 +520,19 @@ function Workspace() {
     setModal(null); showToast('Tenant added and dues created');
     if (!demo && property) {
       const bedRecord = realBeds.find((candidate) => candidate.room === room && candidate.bed === bed && candidate.status === 'vacant');
-      if (bedRecord) void apiRequest('/api/tenancies', { method: 'POST', body: JSON.stringify({ bedId: bedRecord.id, name, phone, email: data.get('email'), occupation: data.get('occupation'), hometown: data.get('hometown'), emergencyName: data.get('emergencyName'), emergencyPhone: data.get('emergencyPhone'), allotment, rent, security, firstMonthRent: firstMonth }) }).then(() => loadRealData(activePropertyId)).catch((error: Error) => showToast(error.message));
+      const email = String(data.get('email') ?? '').trim().toLowerCase();
+      if (bedRecord) void apiRequest('/api/tenancies', { method: 'POST', body: JSON.stringify({ bedId: bedRecord.id, name, phone, email, occupation: data.get('occupation'), hometown: data.get('hometown'), emergencyName: data.get('emergencyName'), emergencyPhone: data.get('emergencyPhone'), allotment, rent, security, firstMonthRent: firstMonth }) })
+        .then(() => { loadRealData(activePropertyId); if (email) setInviteTenant({ name, phone, email, propertyName: property.name, room, bed }); else showToast('Add a resident email later to enable portal access'); })
+        .catch((error: Error) => showToast(error.message));
       else showToast('That bed was just taken — refresh and pick another');
       return;
     }
     const next = [...tenants, { id: Math.max(...tenants.map((tenant) => tenant.id), 0) + 1, room, bed, name, phone, allotment, rent, security, firstMonthRent: firstMonth, received: 0, status: 'partial' as const, kyc: 'pending' as const }];
     setTenants(next); persistState(next, orders);
+  }
+  function openResidentInvite(tenant: Tenant) {
+    if (!tenant.email) { showToast('Add the resident’s email first to enable portal access'); return; }
+    setInviteTenant({ name: tenant.name, phone: tenant.phone, email: tenant.email, propertyName: propertyLabel, room: tenant.room, bed: tenant.bed });
   }
   function recordPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -778,9 +788,10 @@ function Workspace() {
         </main>
       </div>
 
-      {drawerTenant && <TenantDrawer key={drawerTenant.id} tenant={drawerTenant} propertyName={propertyLabel} history={realHistory[drawerTenant.id]} onClose={() => setDrawerId(null)} onPayment={() => openPayment(drawerTenant.id)} onVacate={demo ? undefined : () => vacateTenant(drawerTenant.id)} onUpdate={demo ? undefined : updateTenant} onVoidReceipt={demo ? undefined : voidReceipt} />}
+      {drawerTenant && <TenantDrawer key={drawerTenant.id} tenant={drawerTenant} propertyName={propertyLabel} history={realHistory[drawerTenant.id]} onClose={() => setDrawerId(null)} onPayment={() => openPayment(drawerTenant.id)} onInvite={() => openResidentInvite(drawerTenant)} onVacate={demo ? undefined : () => vacateTenant(drawerTenant.id)} onUpdate={demo ? undefined : updateTenant} onVoidReceipt={demo ? undefined : voidReceipt} />}
       {propEditOpen && property && <PropertyEditModal property={property} onClose={() => setPropEditOpen(false)} onSave={savePropertyDetails} />}
       {modal === 'tenant' && <AddTenantModal availableBeds={availableBeds} draftDate={draftDate} draftRent={draftRent} defaultSecurity={property?.defaultSecurity ?? 3000} onDate={setDraftDate} onRent={setDraftRent} onClose={() => setModal(null)} onSubmit={addTenant} />}
+      {inviteTenant && <ResidentInviteModal invite={inviteTenant} onClose={() => setInviteTenant(null)} onCopied={() => showToast('Invite message copied')} />}
       {modal === 'payment' && selectedTenant && <PaymentModal tenant={selectedTenant} onClose={() => setModal(null)} onSubmit={recordPayment} />}
       {modal === 'maintenance' && <MaintenanceModal tenants={tenants} onClose={() => setModal(null)} onSubmit={addMaintenance} />}
       {modal === 'booking' && <BookingModal defaultRent={property?.defaultRent ?? 3000} onClose={() => setModal(null)} onSubmit={addBooking} />}
@@ -968,12 +979,12 @@ function MaintenanceView({ orders, onUpdate, onAdd }: { orders: WorkOrder[]; onU
     <section className="surface work-orders"><div className="surface-head"><div><p className="overline">WORK ORDERS</p><h2>Maintenance requests</h2></div><button className="main-button" onClick={onAdd}>＋ New request</button></div>{orders.length ? orders.map((order)=><article key={order.id}><span className={`order-icon ${order.priority}`}>{order.category==='Plumbing'?'≋':order.category==='Electrical'?'ϟ':'⌁'}</span><div className="order-copy"><div><strong>{order.title}</strong><span className={`priority ${order.priority}`}>{order.priority}</span></div><p>Room {order.room} · {order.tenant}</p><small>{order.category} · Opened {order.opened}</small></div><div className="order-status"><span className={order.status}>{order.status.replace('-',' ')}</span>{order.status === 'resolved' ? <em>Completed</em> : <button onClick={()=>onUpdate(order.id)}>{order.status==='new'?'Start work':'Mark resolved'} →</button>}</div></article>) : <div className="empty"><strong>A quiet desk</strong><span>No work orders yet — create one when a repair needs attention.</span></div>}</section></div>;
 }
 
-function TenantDrawer({ tenant, propertyName = 'RentWise', history, onClose, onPayment, onVacate, onUpdate, onVoidReceipt }: { tenant: Tenant; propertyName?: string; history?: Receipt[]; onClose: () => void; onPayment: () => void; onVacate?: () => void; onUpdate?: (id: number, patch: { name?: string; phone?: string; email?: string; occupation?: string; hometown?: string; emergencyName?: string; emergencyPhone?: string; rent?: number; security?: number }) => void; onVoidReceipt?: (paymentId: number) => void }) {
+function TenantDrawer({ tenant, propertyName = 'RentWise', history, onClose, onPayment, onInvite, onVacate, onUpdate, onVoidReceipt }: { tenant: Tenant; propertyName?: string; history?: Receipt[]; onClose: () => void; onPayment: () => void; onInvite: () => void; onVacate?: () => void; onUpdate?: (id: number, patch: { name?: string; phone?: string; email?: string; occupation?: string; hometown?: string; emergencyName?: string; emergencyPhone?: string; rent?: number; security?: number }) => void; onVoidReceipt?: (paymentId: number) => void }) {
   const [editing, setEditing] = useState(false);
   const profile = profileFor(tenant); const balance = balanceFor(tenant);
   const receipts = history ?? [];
   const whatsapp = waLink(tenant, propertyName, balance);
-  return <div className="drawer-layer" onMouseDown={onClose}><aside className="drawer" role="dialog" aria-modal="true" aria-label={`Tenant profile: ${tenant.name}`} onMouseDown={(event)=>event.stopPropagation()}><header><button aria-label="Close profile" onClick={onClose}>×</button><div className="drawer-topline"><p className="overline">TENANT PROFILE</p>{onUpdate && <button className="link-button" onClick={() => setEditing((value) => !value)}>{editing ? 'Cancel' : '✎ Edit details'}</button>}</div><div className="drawer-person"><span>{tenant.name.split(' ').map((part)=>part[0]).join('').slice(0,2)}</span><div><h2>{tenant.name}</h2><p>Room {tenant.room} · Bed {tenant.bed}</p></div></div><div className="drawer-actions">{balance > 0 ? <button className="main-button" onClick={onPayment}>₹ Record payment</button> : <button className="main-button" disabled>✓ Balance clear</button>}{whatsapp ? <a className="quiet-button" href={whatsapp} target="_blank" rel="noreferrer">Message</a> : <button className="quiet-button" title="Add a phone number to enable WhatsApp">Message</button>}</div></header><div className="drawer-body">
+  return <div className="drawer-layer" onMouseDown={onClose}><aside className="drawer" role="dialog" aria-modal="true" aria-label={`Tenant profile: ${tenant.name}`} onMouseDown={(event)=>event.stopPropagation()}><header><button aria-label="Close profile" onClick={onClose}>×</button><div className="drawer-topline"><p className="overline">TENANT PROFILE</p>{onUpdate && <button className="link-button" onClick={() => setEditing((value) => !value)}>{editing ? 'Cancel' : '✎ Edit details'}</button>}</div><div className="drawer-person"><span>{tenant.name.split(' ').map((part)=>part[0]).join('').slice(0,2)}</span><div><h2>{tenant.name}</h2><p>Room {tenant.room} · Bed {tenant.bed}</p></div></div><div className="drawer-actions">{balance > 0 ? <button className="main-button" onClick={onPayment}>₹ Record payment</button> : <button className="main-button" disabled>✓ Balance clear</button>}{whatsapp ? <a className="quiet-button" href={whatsapp} target="_blank" rel="noreferrer">Message</a> : <button className="quiet-button" title="Add a phone number to enable WhatsApp">Message</button>}<button className="quiet-button" onClick={onInvite}>Invite to portal</button></div></header><div className="drawer-body">
     {editing && onUpdate ? (
       <form className="edit-grid" onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); onUpdate(tenant.id, { name: String(data.get('name')), phone: String(data.get('phone')), email: String(data.get('email')), occupation: String(data.get('occupation')), hometown: String(data.get('hometown')), emergencyName: String(data.get('emergencyName')), emergencyPhone: String(data.get('emergencyPhone')), rent: Number(data.get('rent')), security: Number(data.get('security')) }); setEditing(false); }}>
         <label>Name<input name="name" required defaultValue={tenant.name} /></label>
@@ -997,6 +1008,19 @@ function TenantDrawer({ tenant, propertyName = 'RentWise', history, onClose, onP
     <section className="drawer-section"><div className="section-title"><h3>Recent receipts</h3></div>{receipts.length ? <div className="receipts">{receipts.map((item,index)=><div key={`${item.id || index}`}><i>₹</i><p><strong>{money.format(item.amount)}</strong><span>{item.note} · {item.mode}{item.receiptNumber ? ` · ${item.receiptNumber}` : ''}</span></p>{item.hasProof && <a className="receipt-print" href={`/api/payments?proofId=${item.id}`} aria-label={`Download payment proof for ${money.format(item.amount)}`} title={item.proofName || 'Download payment proof'}>⌑</a>}<button className="receipt-print" aria-label={`Print receipt of ${money.format(item.amount)}`} title="Print receipt" onClick={() => printReceipt(tenant, propertyName, item, balance)}>⎙</button>{onVoidReceipt && item.id > 0 && <button className="receipt-void" aria-label={`Void receipt of ${money.format(item.amount)}`} title="Void receipt" onClick={() => onVoidReceipt(item.id)}>×</button>}<time>{item.date}</time></div>)}</div> : <p className="no-receipts">No receipts yet — record the first payment to start the ledger.</p>}</section>
     {onVacate && <section className="drawer-section"><div className="section-title"><h3>Tenancy</h3></div><div className="vacate-row"><p>Checked out? Closing the tenancy frees the bed and keeps every receipt on file.</p><button className="quiet-button danger" onClick={onVacate}>Vacate bed</button></div></section>}
   </div></aside></div>;
+}
+
+function ResidentInviteModal({ invite, onClose, onCopied }: { invite: ResidentInvite; onClose: () => void; onCopied: () => void }) {
+  const portalUrl = `${window.location.origin}/tenant`;
+  const firstName = invite.name.split(' ')[0] || invite.name;
+  const message = `Hi ${firstName}, your RentWise resident portal for ${invite.propertyName} is ready. Sign in with ${invite.email} to view Room ${invite.room}, Bed ${invite.bed}, your rent, receipts and maintenance updates: ${portalUrl}`;
+  const digits = (invite.phone ?? '').replace(/\D/g, '').slice(-10);
+  const whatsapp = digits.length === 10 ? `https://wa.me/91${digits}?text=${encodeURIComponent(message)}` : null;
+  async function copyInvite() {
+    try { await navigator.clipboard.writeText(message); onCopied(); }
+    catch { window.prompt('Copy this resident invitation', message); }
+  }
+  return <div className="modal-layer" onMouseDown={onClose}><section className="modal invite-modal" role="dialog" aria-modal="true" aria-label={`Invite ${invite.name} to RentWise`} onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" aria-label="Close invitation" onClick={onClose}>×</button><p className="overline">RESIDENT PORTAL READY</p><h2>Invite {invite.name}</h2><p className="modal-copy">Their portal opens only after they sign in with <b>{invite.email}</b>, the email saved on this tenancy.</p><div className="invite-summary"><span>Room {invite.room} · Bed {invite.bed}</span><small>{invite.propertyName}</small></div><div className="invite-message">{message}</div><div className="invite-actions">{whatsapp ? <a className="main-button" href={whatsapp} target="_blank" rel="noreferrer">Send on WhatsApp</a> : <button className="main-button" disabled>Add a mobile number for WhatsApp</button>}<button className="quiet-button" onClick={() => void copyInvite()}>Copy invitation</button></div><p className="invite-note">No account is created for the resident. They choose Google or email sign-in themselves.</p></section></div>;
 }
 
 function AddTenantModal({ availableBeds, draftDate, draftRent, defaultSecurity, onDate, onRent, onClose, onSubmit }: { availableBeds: {room:string;bed:string}[]; draftDate:string; draftRent:number; defaultSecurity:number; onDate:(value:string)=>void; onRent:(value:number)=>void; onClose:()=>void; onSubmit:(event:FormEvent<HTMLFormElement>)=>void }) {
