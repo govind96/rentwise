@@ -6,11 +6,11 @@ import { apiError, audit, intValue, isResponse, requireOwner, textValue } from '
 type PropertyRow = { id: number; name: string; address: string | null; city: string | null; property_type: string | null; audience: string | null; rent_due_day: number; grace_days: number; late_fee: number; default_rent: number; default_security: number; notice_days: number; agreement_required: number; verification_required: number; amenities_json: string; meal_plan: string | null; electricity_plan: string | null; climate_plan: string | null; bathroom_plan: string | null };
 type BedRow = { id: number; room_no: string; bed_no: string; monthly_rent: number; status: string };
 type TenancyRow = {
-  id: number; bed_id: number; tenant_name: string; phone: string | null; allotment_date: string;
+  id: number; bed_id: number; tenant_name: string; phone: string | null; email: string | null; occupation: string | null; hometown: string | null; emergency_name: string | null; emergency_phone: string | null; allotment_date: string;
   monthly_rent: number; security_amount: number; first_month_rent: number; room_no: string; bed_no: string; rent_due_day: number;
 };
 type ChargeRow = { tenancy_id: number; kind: string; period: string; amount: number; due_on: string };
-type PaymentRow = { id: number; tenancy_id: number; amount: number; paid_on: string; mode: string; reference: string | null; receipt_number: string | null };
+type PaymentRow = { id: number; tenancy_id: number; amount: number; paid_on: string; mode: string; reference: string | null; receipt_number: string | null; proof_storage_key: string | null; proof_original_name: string | null };
 
 export async function GET(request: Request) {
   if (!env.DB) return Response.json({ error: 'Database unavailable' }, { status: 500 });
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
   // Backfill/generate the ledger for every active tenancy of the active property.
   const tenancies = await env.DB.prepare(`SELECT t.id, t.allotment_date, t.monthly_rent, t.security_amount, t.first_month_rent,
-      t.tenant_name, t.phone, b.room_no, b.bed_no, b.id AS bed_id, p.rent_due_day
+      t.tenant_name, t.phone, t.email, t.occupation, t.hometown, t.emergency_name, t.emergency_phone, b.room_no, b.bed_no, b.id AS bed_id, p.rent_due_day
     FROM tenancies t JOIN beds b ON b.id = t.bed_id JOIN properties p ON p.id = b.property_id
     WHERE b.property_id = ? AND t.status = 'active'
     ORDER BY CAST(b.room_no AS INTEGER), b.bed_no`).bind(active.id).all<TenancyRow>();
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
     FROM charges c JOIN tenancies t ON t.id = c.tenancy_id JOIN beds b ON b.id = t.bed_id
     WHERE b.property_id = ? AND t.status = 'active'
     ORDER BY c.due_on ASC, c.id ASC`).bind(active.id).all<ChargeRow>();
-  const paymentRows = await env.DB.prepare(`SELECT p.id, p.tenancy_id, p.amount, p.paid_on, p.mode, p.reference, p.receipt_number
+  const paymentRows = await env.DB.prepare(`SELECT p.id, p.tenancy_id, p.amount, p.paid_on, p.mode, p.reference, p.receipt_number, p.proof_storage_key, p.proof_original_name
     FROM payments p JOIN tenancies t ON t.id = p.tenancy_id JOIN beds b ON b.id = t.bed_id
     WHERE b.property_id = ? AND p.status = 'confirmed' ORDER BY p.paid_on DESC, p.id DESC`).bind(active.id).all<PaymentRow>();
 
@@ -93,14 +93,14 @@ export async function GET(request: Request) {
     }
     if (!monthly) monthly = latestMonthly ? { ...latestMonthly, status: latestMonthly.status as 'paid' | 'partial' | 'due' } : null;
     return {
-      id: row.id, bedId: row.bed_id, name: row.tenant_name, phone: row.phone, allotment: row.allotment_date,
+      id: row.id, bedId: row.bed_id, name: row.tenant_name, phone: row.phone, email: row.email, occupation: row.occupation, hometown: row.hometown, emergencyName: row.emergency_name, emergencyPhone: row.emergency_phone, allotment: row.allotment_date,
       room: row.room_no, bed: row.bed_no, rent: row.monthly_rent, security: row.security_amount,
       firstMonthRent: row.first_month_rent, received, chargesTotal,
       balance: Math.max(0, chargesTotal - Math.min(received, chargesTotal)),
       monthly, chargesSummary,
       payments: (paymentsByTenancy.get(row.id) ?? []).slice(0, 8).map((payment) => ({
         id: payment.id, amount: payment.amount, date: payment.paid_on, mode: payment.mode,
-        note: payment.reference || 'Payment received', receiptNumber: payment.receipt_number,
+        note: payment.reference || 'Payment received', receiptNumber: payment.receipt_number, hasProof: Boolean(payment.proof_storage_key), proofName: payment.proof_original_name,
       })),
     };
   });

@@ -106,6 +106,10 @@ export const payments = sqliteTable('payments', {
   status: text('status', { enum: ['confirmed', 'voided', 'refunded'] }).notNull().default('confirmed'),
   idempotencyKey: text('idempotency_key'),
   receiptNumber: text('receipt_number'),
+  proofStorageKey: text('proof_storage_key'),
+  proofOriginalName: text('proof_original_name'),
+  proofContentType: text('proof_content_type'),
+  proofSizeBytes: integer('proof_size_bytes'),
   voidedAt: text('voided_at'),
   createdAt: text('created_at').notNull(),
 }, (table) => [

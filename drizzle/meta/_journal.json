@@ -36,6 +36,13 @@
       "when": 1787822131727,
       "tag": "0004_hot_emma_frost",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788100400180,
+      "tag": "0005_faulty_power_man",
+      "breakpoints": true
     }
   ]
 }

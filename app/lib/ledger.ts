@@ -102,6 +102,7 @@ export async function ensureAppSchema() {
   });
   await ensureColumns('payments', {
     status: "TEXT NOT NULL DEFAULT 'confirmed'", idempotency_key: 'TEXT', receipt_number: 'TEXT', voided_at: 'TEXT',
+    proof_storage_key: 'TEXT', proof_original_name: 'TEXT', proof_content_type: 'TEXT', proof_size_bytes: 'INTEGER',
   });
   await ensureColumns('beds', { floor_no: 'TEXT' });
   await ensureColumns('tenancies', {

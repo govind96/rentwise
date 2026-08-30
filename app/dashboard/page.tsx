@@ -11,11 +11,12 @@ type Tenant = {
   id: number; room: string; bed: string; name: string; allotment: string;
   rent: number; security: number; firstMonthRent: number; received: number;
   status: 'paid' | 'partial'; phone?: string; profession?: string; hometown?: string;
+  email?: string; emergencyName?: string; emergencyPhone?: string;
   kyc?: 'verified' | 'pending'; agreementEnd?: string; recurringReceived?: number;
   chargesTotal?: number; balance?: number;
   monthly?: { period: string; expected: number; paid: number; status: 'paid' | 'partial' | 'due' | 'na' } | null;
 };
-type Receipt = { id: number; amount: number; date: string; mode: string; note: string };
+type Receipt = { id: number; amount: number; date: string; mode: string; note: string; receiptNumber?: string | null; hasProof?: boolean; proofName?: string | null };
 type PropertyInfo = {
   id: number; name: string; address: string; city?: string;
   type?: PropertyDraft['type']; audience?: PropertyDraft['audience']; amenities?: string[];
@@ -70,12 +71,12 @@ function waLink(tenant: Tenant, propertyName: string, balance: number): string |
 }
 
 /** Open a printable, self-contained receipt document for one payment. */
-function printReceipt(tenant: Tenant, propertyName: string, receipt: { amount: number; date: string; mode: string; note: string }, balance: number) {
+function printReceipt(tenant: Tenant, propertyName: string, receipt: Receipt, balance: number) {
   const win = window.open('', 'rentwise-receipt', 'width=760,height=900');
   if (!win) return;
   const esc = (value: string | number) => String(value).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch] ?? ch));
   const rows: [string, string][] = [
-    ['Receipt no', `RW-${Math.abs(receipt.amount * 7 + tenant.id * 13) % 100000}`],
+    ['Receipt no', receipt.receiptNumber || 'Receipt pending'],
     ['Received from', esc(tenant.name)],
     ['Room / Bed', `Room ${esc(tenant.room)} · Bed ${esc(tenant.bed)}`],
     ['Amount received', money.format(receipt.amount)],
@@ -198,18 +199,6 @@ function propertyInitials(name: string) {
   return name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'PG';
 }
 
-const profileData = [
-  ['Student', 'Patna'], ['Designer', 'Ranchi'], ['Student', 'Gaya'], ['Analyst', 'Bhopal'], ['Student', 'Lucknow'], ['Teacher', 'Prayagraj'],
-  ['Student', 'Jaipur'], ['Support executive', 'Delhi'], ['Developer', 'Raipur'], ['Student', 'Dhanbad'], ['Analyst', 'Varanasi'], ['Student', 'Kolkata'],
-  ['Consultant', 'Pune'], ['Designer', 'Indore'], ['Student', 'Kanpur'], ['Student', 'Jamshedpur'], ['Executive', 'Patna'], ['Student', 'Ranchi'],
-];
-
-const paymentHistory: Record<number, { amount: number; date: string; mode: string; note: string }[]> = {
-  1: [{ amount: 90, date: '09 Aug', mode: 'UPI', note: 'Balance settled' }, { amount: 1716, date: '05 Aug', mode: 'UPI', note: 'First-month rent' }, { amount: 2000, date: '03 Aug', mode: 'UPI', note: 'Security deposit' }],
-  4: [{ amount: 6066, date: '09 Aug', mode: 'UPI', note: 'Security + rent' }],
-  7: [{ amount: 1000, date: '06 Aug', mode: 'UPI', note: 'Part payment' }],
-  11: [{ amount: 1750, date: '05 Aug', mode: 'UPI', note: 'Part payment' }],
-};
 
 function dueFor(tenant: Tenant) { return tenant.chargesTotal ?? (tenant.security + tenant.firstMonthRent); }
 function balanceFor(tenant: Tenant) {
@@ -232,15 +221,7 @@ function timeOfDay() {
   const hour = new Date().getHours();
   return hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
 }
-function profileFor(tenant: Tenant) {
-  const fallback = profileData[(tenant.id - 1) % profileData.length];
-  return {
-    profession: tenant.profession ?? fallback[0], hometown: tenant.hometown ?? fallback[1],
-    phone: tenant.phone ?? `+91 9${tenant.id % 2 ? '8' : '7'}••• ••${String(400 + tenant.id).padStart(3, '0')}`,
-    kyc: tenant.kyc ?? (tenant.id % 4 === 0 ? 'pending' : 'verified'),
-    agreementEnd: tenant.agreementEnd ?? '31 Jul 2027',
-  };
-}
+function profileFor(tenant: Tenant) { return { profession: tenant.profession || 'Not recorded', hometown: tenant.hometown || 'Not recorded', phone: tenant.phone || 'Not recorded', kyc: tenant.kyc ?? 'pending', agreementEnd: tenant.agreementEnd || 'Not recorded' }; }
 function proratedRent(monthlyRent: number, allotment: string) {
   if (!allotment) return 0;
   const date = new Date(`${allotment}T00:00:00`);
@@ -256,11 +237,6 @@ const heroExamples = [
 ];
 
 type Summary = { expected: number; collected: number; pending: number; totalBeds: number; occupied: number; recurringExpected: number; recurringCollected: number };
-const sixDaysAgoLabel = (() => {
-  const date = new Date();
-  date.setDate(date.getDate() - 6);
-  return `${MONTH_NAMES[date.getMonth()]} ${date.getDate()}`;
-})();
 
 const viewCopy: Record<View, { eyebrow: string; title: string; subtitle: string }> = {
   overview: { eyebrow: longDate(), title: 'Welcome back.', subtitle: 'Here’s a calm, clear look at what your property needs today.' },
@@ -297,8 +273,8 @@ function Workspace() {
   const [toast, setToast] = useState('');
   const [draftRent, setDraftRent] = useState(3000);
   const [draftDate, setDraftDate] = useState(todayISO());
-  const [property, setProperty] = useState<PropertyInfo | null>(seededProperty);
-  const [properties, setProperties] = useState<PropertyInfo[]>([seededProperty]);
+  const [property, setProperty] = useState<PropertyInfo | null>(null);
+  const [properties, setProperties] = useState<PropertyInfo[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioProperty[]>(demo ? [seededProperty] : []);
   const [activePropertyId, setActivePropertyId] = useState<number | null>(demo ? seededProperty.id : null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -344,9 +320,9 @@ function Workspace() {
       .then((response) => response.ok ? response.json() as Promise<{
         properties: PropertyInfo[]; property: PropertyInfo | null; beds: RealBed[]; orders: WorkOrder[]; bookings: Booking[]; expenses: Expense[]; exitNotices: ExitNotice[]; documents: TenantDocument[];
         tenants: { id: number; room: string; bed: string; name: string; phone: string | null; allotment: string;
-          rent: number; security: number; firstMonthRent: number; received: number;
+          rent: number; security: number; firstMonthRent: number; received: number; email?: string | null; occupation?: string | null; hometown?: string | null; emergencyName?: string | null; emergencyPhone?: string | null;
           chargesTotal?: number; balance?: number; monthly?: Tenant['monthly'];
-          payments?: { id: number; amount: number; date: string; mode: string; note: string }[];
+          payments?: Receipt[];
         }[];
       }> : response.status === 401 ? (setAccess('signed-out'), null) : Promise.reject(new Error('Workspace could not be loaded')))
       .then((data) => {
@@ -364,7 +340,7 @@ function Workspace() {
         for (const row of data.tenants) if (row.payments?.length) history[row.id] = row.payments;
         setRealHistory(history);
         setTenants(data.tenants.map((row) => ({
-          id: row.id, room: String(row.room), bed: String(row.bed), name: row.name, phone: row.phone ?? undefined,
+          id: row.id, room: String(row.room), bed: String(row.bed), name: row.name, phone: row.phone ?? undefined, email: row.email ?? undefined, profession: row.occupation ?? undefined, hometown: row.hometown ?? undefined, emergencyName: row.emergencyName ?? undefined, emergencyPhone: row.emergencyPhone ?? undefined,
           allotment: row.allotment, rent: row.rent, security: row.security, firstMonthRent: row.firstMonthRent,
           received: row.received, chargesTotal: row.chargesTotal, balance: row.balance, monthly: row.monthly ?? null,
           status: (row.balance != null ? row.balance <= 0 : row.received >= row.security + row.firstMonthRent) ? 'paid' as const : 'partial' as const,
@@ -430,7 +406,7 @@ function Workspace() {
 
   const inventory: RoomInventory = useMemo(() => {
     if (demo) return demoInventory;
-    if (!realBeds.length) return seededInventory;
+    if (!realBeds.length) return [];
     const groups = new Map<string, string[]>();
     for (const bed of realBeds) groups.set(bed.room, [...(groups.get(bed.room) ?? []), bed.bed]);
     return [...groups.entries()].sort((a, b) => Number(a[0]) - Number(b[0]));
@@ -445,7 +421,7 @@ function Workspace() {
     return { expected, collected, pending: Math.max(0, expected - collected), totalBeds, occupied: tenants.length, recurringExpected, recurringCollected };
   }, [tenants, inventory, demo]);
 
-  const propertyLabel = property?.name ?? 'Saffron Stay PG';
+  const propertyLabel = property?.name ?? 'Your property';
   const availableBeds = inventory.flatMap(([room, beds]) => beds.filter((bed) => !tenants.some((tenant) => tenant.room === room && tenant.bed === bed)).map((bed) => ({ room, bed })));
   const filteredTenants = tenants.filter((tenant) => {
     const profile = profileFor(tenant);
@@ -540,7 +516,7 @@ function Workspace() {
     setModal(null); showToast('Tenant added and dues created');
     if (!demo && property) {
       const bedRecord = realBeds.find((candidate) => candidate.room === room && candidate.bed === bed && candidate.status === 'vacant');
-      if (bedRecord) void apiRequest('/api/tenancies', { method: 'POST', body: JSON.stringify({ bedId: bedRecord.id, name, phone, allotment, rent, security, firstMonthRent: firstMonth }) }).then(() => loadRealData(activePropertyId)).catch((error: Error) => showToast(error.message));
+      if (bedRecord) void apiRequest('/api/tenancies', { method: 'POST', body: JSON.stringify({ bedId: bedRecord.id, name, phone, email: data.get('email'), occupation: data.get('occupation'), hometown: data.get('hometown'), emergencyName: data.get('emergencyName'), emergencyPhone: data.get('emergencyPhone'), allotment, rent, security, firstMonthRent: firstMonth }) }).then(() => loadRealData(activePropertyId)).catch((error: Error) => showToast(error.message));
       else showToast('That bed was just taken — refresh and pick another');
       return;
     }
@@ -553,7 +529,10 @@ function Workspace() {
     const amount = Number(data.get('amount'));
     setModal(null); showToast(`${money.format(amount)} receipt recorded`);
     if (!demo && selectedId != null) {
-      void apiRequest('/api/payments', { method: 'POST', body: JSON.stringify({ tenancyId: selectedId, amount, paidOn: String(data.get('date') || ''), mode: String(data.get('mode') || 'UPI'), reference: String(data.get('reference') || ''), idempotencyKey: crypto.randomUUID() }) })
+      const form = new FormData();
+      form.set('tenancyId', String(selectedId)); form.set('amount', String(amount)); form.set('paidOn', String(data.get('date') || '')); form.set('mode', String(data.get('mode') || 'UPI')); form.set('reference', String(data.get('reference') || '')); form.set('idempotencyKey', crypto.randomUUID());
+      const proof = data.get('proof'); if (proof instanceof File && proof.size) form.set('proof', proof);
+      void fetch('/api/payments', { method: 'POST', body: form }).then(async (response) => { const result = await response.json().catch(() => ({})) as { error?: string }; if (!response.ok) throw new Error(result.error || 'Could not save payment'); return result; })
         .then(() => { showToast(`${money.format(amount)} saved to your ledger`); loadRealData(activePropertyId); })
         .catch((error: Error) => showToast(error.message));
       return;
@@ -683,6 +662,11 @@ function Workspace() {
     void apiRequest('/api/documents', { method: 'PATCH', body: JSON.stringify({ id, status }) })
       .then(() => { showToast(`Document marked ${status}`); loadRealData(activePropertyId); }).catch((error: Error) => showToast(error.message));
   }
+  function deleteDocument(id: number) {
+    if (!window.confirm('Delete this document from RentWise? This cannot be undone.')) return;
+    void apiRequest('/api/documents', { method: 'DELETE', body: JSON.stringify({ id }) })
+      .then(() => { showToast('Document deleted'); loadRealData(activePropertyId); }).catch((error: Error) => showToast(error.message));
+  }
   function openPayment(id: number) { setSelectedId(id); setModal('payment'); }
   function goTo(next: View) { setView(next); setDrawerId(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function switchProperty(id: number) {
@@ -703,7 +687,7 @@ function Workspace() {
       .then(() => { setDrawerId(null); showToast('Tenancy closed — bed is vacant'); loadRealData(activePropertyId); })
       .catch((error: Error) => showToast(error.message));
   }
-  function updateTenant(id: number, patch: { name?: string; phone?: string; rent?: number; security?: number }) {
+  function updateTenant(id: number, patch: { name?: string; phone?: string; email?: string; occupation?: string; hometown?: string; emergencyName?: string; emergencyPhone?: string; rent?: number; security?: number }) {
     void apiRequest('/api/tenancies', { method: 'PATCH', body: JSON.stringify({ tenancyId: id, ...patch }) })
       .then(() => { showToast('Tenant details updated'); loadRealData(activePropertyId); })
       .catch((error: Error) => showToast(error.message));
@@ -739,7 +723,7 @@ function Workspace() {
       <aside className="side">
         <button className="logo" onClick={() => goTo('overview')}><BrandMark /><strong>RentWise</strong></button>
         <div className="prop-switch">
-          <button className="property-select" aria-expanded={switcherOpen} onClick={() => properties.length > 0 ? setSwitcherOpen((open) => !open) : openPropertyOnboarding()}><span className="property-thumb">{propertyInitials(property?.name ?? 'Saffron Stay PG')}</span><span><small>{properties.length > 1 ? `${properties.length} PROPERTIES` : 'YOUR PROPERTY'}</small><strong>{property?.name ?? 'Saffron Stay PG'}</strong><em>{property ? `${property.address}${property.city ? `, ${property.city}` : ''}` : 'Kalyan Nagar, Bengaluru'}</em></span><b>⌄</b></button>
+          <button className="property-select" aria-expanded={switcherOpen} onClick={() => properties.length > 0 ? setSwitcherOpen((open) => !open) : openPropertyOnboarding()}><span className="property-thumb">{propertyInitials(property?.name ?? 'PG')}</span><span><small>{properties.length > 1 ? `${properties.length} PROPERTIES` : 'YOUR PROPERTY'}</small><strong>{property?.name ?? 'Set up your property'}</strong><em>{property ? `${property.address}${property.city ? `, ${property.city}` : ''}` : 'Add rooms, beds and rent defaults'}</em></span><b>⌄</b></button>
           {switcherOpen && <>
             <button className="prop-backdrop" aria-label="Close property menu" onClick={() => setSwitcherOpen(false)} />
             <div className="prop-menu" role="menu">
@@ -764,7 +748,7 @@ function Workspace() {
       <div className="workspace">
         <div className="mobile-topbar"><button className="mobile-brand" onClick={() => goTo('overview')}><BrandMark /><strong>RentWise</strong></button><button className="mobile-lookup" onClick={() => { setFilter('all'); goTo('tenants'); }}><span>⌕</span><em>Search tenant or room</em></button><ThemeToggle compact /><button className="mobile-create" aria-label="Create new allotment" onClick={() => setModal('tenant')}>＋</button></div>
         <div className="mobile-property-switch">
-          <button className="property-select" aria-expanded={switcherOpen} onClick={() => setSwitcherOpen((open) => !open)}><span className="property-thumb">{propertyInitials(property?.name ?? 'Saffron Stay PG')}</span><span><small>ACTIVE PROPERTY</small><strong>{property?.name ?? 'Saffron Stay PG'}</strong><em>{properties.length} {properties.length === 1 ? 'property' : 'properties'} in portfolio</em></span><b>⌄</b></button>
+          <button className="property-select" aria-expanded={switcherOpen} onClick={() => setSwitcherOpen((open) => !open)}><span className="property-thumb">{propertyInitials(property?.name ?? 'PG')}</span><span><small>ACTIVE PROPERTY</small><strong>{property?.name ?? 'Set up your property'}</strong><em>{properties.length} {properties.length === 1 ? 'property' : 'properties'} in portfolio</em></span><b>⌄</b></button>
           {switcherOpen && <><button className="prop-backdrop" aria-label="Close property menu" onClick={() => setSwitcherOpen(false)} /><div className="prop-menu" role="menu">{properties.map((item) => <button key={item.id} role="menuitem" className={item.id === activePropertyId ? 'prop-item active' : 'prop-item'} onClick={() => switchProperty(item.id)}><span>{propertyInitials(item.name)}</span><p><strong>{item.name}</strong><small>{item.address || 'No address yet'}</small></p>{item.id === activePropertyId && <b>✓</b>}</button>)}<div className="prop-divider" /><button role="menuitem" className="prop-item add" onClick={openPropertyOnboarding}><span>＋</span><p><strong>Add another property</strong><small>Build rooms, beds and rent defaults</small></p></button>{!demo && <a role="menuitem" className="prop-item backup" href="/api/account/export"><span>⇩</span><p><strong>Download account export</strong><small>Properties, ledgers and audit history</small></p></a>}{demo && <button role="menuitem" className="prop-item backup" onClick={downloadPortfolioBackup}><span>⇩</span><p><strong>Download portfolio backup</strong><small>Keep a portable copy of this browser’s data</small></p></button>}{demo && <button role="menuitem" className="prop-item backup" onClick={() => { setSwitcherOpen(false); backupInputRef.current?.click(); }}><span>↥</span><p><strong>Restore portfolio backup</strong><small>Open a RentWise JSON backup on this device</small></p></button>}</div></>}
         </div>
         <div className="mobile-nav">{(['overview', 'property', 'tenants', 'rent', 'bookings', 'finance', 'documents', 'maintenance'] as View[]).map((item) => <button key={item} className={view === item ? 'active' : ''} onClick={() => goTo(item)}>{({ overview: 'Today', property: 'Property', tenants: 'Tenants', rent: 'Rent', bookings: 'Bookings', finance: 'Expenses', documents: 'Documents', maintenance: 'Repairs' } as Record<View, string>)[item]}</button>)}</div>
@@ -788,7 +772,7 @@ function Workspace() {
         {view === 'rent' && <RentView tenants={tenants} metrics={metrics} propertyName={propertyLabel} history={realHistory} onTenant={setDrawerId} onPayment={openPayment} />}
         {view === 'bookings' && <BookingsView bookings={bookings} notices={exitNotices} onAddBooking={() => setModal('booking')} onAddNotice={() => setModal('notice')} onAdvanceBooking={advanceBooking} onCancelBooking={cancelBooking} onAdvanceNotice={advanceNotice} />}
         {view === 'finance' && <FinanceView expenses={expenses} collected={metrics.collected} onAdd={() => setModal('expense')} />}
-        {view === 'documents' && <DocumentsView tenants={tenants} documents={documents} onUpload={() => setModal('document')} onReview={reviewDocument} />}
+        {view === 'documents' && <DocumentsView tenants={tenants} documents={documents} onUpload={() => setModal('document')} onReview={reviewDocument} onDelete={deleteDocument} />}
         {view === 'maintenance' && <MaintenanceView orders={orders} onUpdate={updateOrder} onAdd={() => setModal('maintenance')} />}
         </main>
       </div>
@@ -841,7 +825,6 @@ function AssistantModal({ tenants, orders, metrics, availableBeds, propertyName,
 function Overview({ propertyName, demo, tenants, orders, metrics, inventory, availableBeds, onView, onTenant, onPayment }: { propertyName: string; demo: boolean; tenants: Tenant[]; orders: WorkOrder[]; metrics: Summary; inventory: RoomInventory; availableBeds: number; onView: (view: View) => void; onTenant: (id: number) => void; onPayment: (id: number) => void }) {
   const pending = [...tenants].filter((tenant) => balanceFor(tenant) > 0).sort((a, b) => balanceFor(b) - balanceFor(a));
   const collectionPercent = metrics.expected ? Math.round((metrics.collected / metrics.expected) * 100) : 0;
-  const collectionTrend = [18, 28, 39, 47, 59, 72, collectionPercent];
   const concentratedDue = pending.slice(0, 2).reduce((sum, tenant) => sum + balanceFor(tenant), 0);
   const urgentCount = orders.filter((order) => order.priority === 'urgent' && order.status !== 'resolved').length;
   const topOrder = orders.find((order) => order.status !== 'resolved');
@@ -860,9 +843,8 @@ function Overview({ propertyName, demo, tenants, orders, metrics, inventory, ava
         <button onClick={() => onView('rent')}>Walk me through it <span>↗</span></button>
       </article>
       <article className="trend-card">
-        <div className="trend-head"><div><span>Collection momentum</span><strong>+18.4%</strong></div><em>Last 7 days</em></div>
-        <div className="trend-chart" aria-label="Seven day collection trend">{collectionTrend.map((value, index) => <i key={index} style={{ height: `${Math.max(14, value)}%` }}><b /></i>)}</div>
-        <div className="trend-labels"><span>{sixDaysAgoLabel}</span><span>Today</span></div>
+        <div className="trend-head"><div><span>Collection status</span><strong>{metrics.expected ? `${Math.round(metrics.collected / metrics.expected * 100)}%` : '—'}</strong></div><em>This month</em></div>
+        <p className="trend-empty">{metrics.expected ? `${money.format(metrics.collected)} recorded against ${money.format(metrics.expected)} due.` : 'Your collection history will appear after the first receipt.'}</p>
       </article>
     </section>
 
@@ -974,10 +956,10 @@ function FinanceView({ expenses, collected, onAdd }: { expenses: Expense[]; coll
     </section></div>;
 }
 
-function DocumentsView({ tenants, documents, onUpload, onReview }: { tenants: Tenant[]; documents: TenantDocument[]; onUpload: () => void; onReview: (id: number, status: 'verified' | 'rejected') => void }) {
+function DocumentsView({ tenants, documents, onUpload, onReview, onDelete }: { tenants: Tenant[]; documents: TenantDocument[]; onUpload: () => void; onReview: (id: number, status: 'verified' | 'rejected') => void; onDelete: (id: number) => void }) {
   const verified = documents.filter((document) => document.status === 'verified').length;
   const review = documents.filter((document) => document.status === 'uploaded').length;
-  return <div className="view-stack"><section className="document-hero"><div><p className="overline">RESIDENT DOCUMENTS</p><h2>Documents, consent and review in one owner workspace.</h2><p>Keep resident-provided proofs and agreements with a clear owner-review status. Mask Aadhaar copies before upload.</p></div><button className="main-button" onClick={onUpload}>⌑ Upload document</button></section><section className="document-summary"><article><span>{verified}</span><p>Files verified<small>Reviewed by the owner</small></p></article><article><span>{review}</span><p>Files to review<small>Uploaded with consent</small></p></article><article><span>{documents.length}</span><p>Total files<small>Owner account access</small></p></article></section><section className="surface document-list"><div className="surface-head"><div><p className="overline">DOCUMENT REGISTER</p><h2>Resident files</h2></div><button className="quiet-button" onClick={onUpload}>＋ Add file</button></div>{documents.length ? documents.map((document) => { const tenant = tenants.find((item) => item.id === document.tenancyId); return <article key={document.id}><div className="due-person"><span>{tenant?.name.slice(0, 1) ?? 'D'}</span><p><strong>{document.label}</strong><small>{tenant?.name ?? 'Former resident'} · {document.originalName || document.kind}</small></p></div><div><span className={`document ${document.status === 'verified' ? 'verified' : 'pending'}`}>{document.status.replace('_', ' ')}</span><small>{document.sizeBytes ? `${Math.ceil(document.sizeBytes / 1024)} KB` : 'Metadata only'}</small></div><div className="row-actions"><a className="record-button" href={`/api/documents?id=${document.id}`}>Download</a>{document.status === 'uploaded' && <><button className="record-button" onClick={() => onReview(document.id, 'verified')}>Verify</button><button className="icon-button danger" aria-label={`Reject ${document.label}`} onClick={() => onReview(document.id, 'rejected')}>×</button></>}</div></article>; }) : <div className="empty"><strong>No files uploaded</strong><span>Add the first resident-provided proof or agreement. Consent is recorded with every upload.</span></div>}</section></div>;
+  return <div className="view-stack"><section className="document-hero"><div><p className="overline">RESIDENT DOCUMENTS</p><h2>Documents, consent and review in one owner workspace.</h2><p>Keep resident-provided proofs and agreements with a clear owner-review status. Mask Aadhaar copies before upload.</p></div><button className="main-button" onClick={onUpload}>⌑ Upload document</button></section><section className="document-summary"><article><span>{verified}</span><p>Files verified<small>Reviewed by the owner</small></p></article><article><span>{review}</span><p>Files to review<small>Uploaded with consent</small></p></article><article><span>{documents.length}</span><p>Total files<small>Owner account access</small></p></article></section><section className="surface document-list"><div className="surface-head"><div><p className="overline">DOCUMENT REGISTER</p><h2>Resident files</h2></div><button className="quiet-button" onClick={onUpload}>＋ Add file</button></div>{documents.length ? documents.map((document) => { const tenant = tenants.find((item) => item.id === document.tenancyId); return <article key={document.id}><div className="due-person"><span>{tenant?.name.slice(0, 1) ?? 'D'}</span><p><strong>{document.label}</strong><small>{tenant?.name ?? 'Former resident'} · {document.originalName || document.kind}</small></p></div><div><span className={`document ${document.status === 'verified' ? 'verified' : 'pending'}`}>{document.status.replace('_', ' ')}</span><small>{document.sizeBytes ? `${Math.ceil(document.sizeBytes / 1024)} KB` : 'Metadata only'}</small></div><div className="row-actions"><a className="record-button" href={`/api/documents?id=${document.id}`}>Download</a>{document.status === 'uploaded' && <><button className="record-button" onClick={() => onReview(document.id, 'verified')}>Verify</button><button className="icon-button danger" aria-label={`Reject ${document.label}`} onClick={() => onReview(document.id, 'rejected')}>×</button></>}<button className="icon-button danger" aria-label={`Delete ${document.label}`} title="Delete document" onClick={() => onDelete(document.id)}>⌫</button></div></article>; }) : <div className="empty"><strong>No files uploaded</strong><span>Add the first resident-provided proof or agreement. Consent is recorded with every upload.</span></div>}</section></div>;
 }
 
 function MaintenanceView({ orders, onUpdate, onAdd }: { orders: WorkOrder[]; onUpdate: (id: number) => void; onAdd: () => void }) {
@@ -985,20 +967,21 @@ function MaintenanceView({ orders, onUpdate, onAdd }: { orders: WorkOrder[]; onU
     <section className="surface work-orders"><div className="surface-head"><div><p className="overline">WORK ORDERS</p><h2>Maintenance requests</h2></div><button className="main-button" onClick={onAdd}>＋ New request</button></div>{orders.length ? orders.map((order)=><article key={order.id}><span className={`order-icon ${order.priority}`}>{order.category==='Plumbing'?'≋':order.category==='Electrical'?'ϟ':'⌁'}</span><div className="order-copy"><div><strong>{order.title}</strong><span className={`priority ${order.priority}`}>{order.priority}</span></div><p>Room {order.room} · {order.tenant}</p><small>{order.category} · Opened {order.opened}</small></div><div className="order-status"><span className={order.status}>{order.status.replace('-',' ')}</span>{order.status === 'resolved' ? <em>Completed</em> : <button onClick={()=>onUpdate(order.id)}>{order.status==='new'?'Start work':'Mark resolved'} →</button>}</div></article>) : <div className="empty"><strong>A quiet desk</strong><span>No work orders yet — create one when a repair needs attention.</span></div>}</section></div>;
 }
 
-function TenantDrawer({ tenant, propertyName = 'RentWise', history, onClose, onPayment, onVacate, onUpdate, onVoidReceipt }: { tenant: Tenant; propertyName?: string; history?: Receipt[]; onClose: () => void; onPayment: () => void; onVacate?: () => void; onUpdate?: (id: number, patch: { name?: string; phone?: string; rent?: number; security?: number }) => void; onVoidReceipt?: (paymentId: number) => void }) {
+function TenantDrawer({ tenant, propertyName = 'RentWise', history, onClose, onPayment, onVacate, onUpdate, onVoidReceipt }: { tenant: Tenant; propertyName?: string; history?: Receipt[]; onClose: () => void; onPayment: () => void; onVacate?: () => void; onUpdate?: (id: number, patch: { name?: string; phone?: string; email?: string; occupation?: string; hometown?: string; emergencyName?: string; emergencyPhone?: string; rent?: number; security?: number }) => void; onVoidReceipt?: (paymentId: number) => void }) {
   const [editing, setEditing] = useState(false);
   const profile = profileFor(tenant); const balance = balanceFor(tenant);
-  const fallbackReceipts: Receipt[] = tenant.received > 0
-    ? (paymentHistory[tenant.id] ?? [{ amount: tenant.received, date: 'August', mode: 'UPI', note: 'Payment received' }])
-      .map((item, index) => ({ id: -(index + 1), ...item }))
-    : [];
-  const receipts = history ?? fallbackReceipts;
+  const receipts = history ?? [];
   const whatsapp = waLink(tenant, propertyName, balance);
   return <div className="drawer-layer" onMouseDown={onClose}><aside className="drawer" role="dialog" aria-modal="true" aria-label={`Tenant profile: ${tenant.name}`} onMouseDown={(event)=>event.stopPropagation()}><header><button aria-label="Close profile" onClick={onClose}>×</button><div className="drawer-topline"><p className="overline">TENANT PROFILE</p>{onUpdate && <button className="link-button" onClick={() => setEditing((value) => !value)}>{editing ? 'Cancel' : '✎ Edit details'}</button>}</div><div className="drawer-person"><span>{tenant.name.split(' ').map((part)=>part[0]).join('').slice(0,2)}</span><div><h2>{tenant.name}</h2><p>Room {tenant.room} · Bed {tenant.bed}</p></div></div><div className="drawer-actions">{balance > 0 ? <button className="main-button" onClick={onPayment}>₹ Record payment</button> : <button className="main-button" disabled>✓ Balance clear</button>}{whatsapp ? <a className="quiet-button" href={whatsapp} target="_blank" rel="noreferrer">Message</a> : <button className="quiet-button" title="Add a phone number to enable WhatsApp">Message</button>}</div></header><div className="drawer-body">
     {editing && onUpdate ? (
-      <form className="edit-grid" onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); onUpdate(tenant.id, { name: String(data.get('name')), phone: String(data.get('phone')), rent: Number(data.get('rent')), security: Number(data.get('security')) }); setEditing(false); }}>
+      <form className="edit-grid" onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); onUpdate(tenant.id, { name: String(data.get('name')), phone: String(data.get('phone')), email: String(data.get('email')), occupation: String(data.get('occupation')), hometown: String(data.get('hometown')), emergencyName: String(data.get('emergencyName')), emergencyPhone: String(data.get('emergencyPhone')), rent: Number(data.get('rent')), security: Number(data.get('security')) }); setEditing(false); }}>
         <label>Name<input name="name" required defaultValue={tenant.name} /></label>
         <label>Phone<input name="phone" defaultValue={tenant.phone ?? ''} placeholder="+91…" /></label>
+        <label>Email<input name="email" type="email" defaultValue={tenant.email ?? ''} placeholder="Optional" /></label>
+        <label>Occupation<input name="occupation" defaultValue={tenant.profession ?? ''} placeholder="Optional" /></label>
+        <label>Hometown<input name="hometown" defaultValue={tenant.hometown ?? ''} placeholder="Optional" /></label>
+        <label>Emergency contact<input name="emergencyName" defaultValue={tenant.emergencyName ?? ''} placeholder="Name" /></label>
+        <label>Emergency phone<input name="emergencyPhone" defaultValue={tenant.emergencyPhone ?? ''} placeholder="Optional" /></label>
         <div className="form-row">
           <label>Monthly rent<input name="rent" type="number" min="0" defaultValue={tenant.rent} required /></label>
           <label>Security deposit<input name="security" type="number" min="0" defaultValue={tenant.security} required /></label>
@@ -1006,21 +989,21 @@ function TenantDrawer({ tenant, propertyName = 'RentWise', history, onClose, onP
         <div className="drawer-actions"><button className="main-button" type="submit">Save changes</button><button className="quiet-button" type="button" onClick={() => setEditing(false)}>Cancel</button></div>
       </form>
     ) : (
-      <section className="profile-grid"><div><span>Phone</span><strong>{tenant.phone ?? profile.phone}</strong></div><div><span>Occupation</span><strong>{profile.profession}</strong></div><div><span>Hometown</span><strong>{profile.hometown}</strong></div><div><span>Allotted</span><strong>{new Date(`${tenant.allotment}T00:00:00`).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</strong></div></section>
+      <section className="profile-grid"><div><span>Phone</span><strong>{tenant.phone ?? profile.phone}</strong></div><div><span>Occupation</span><strong>{profile.profession}</strong></div><div><span>Hometown</span><strong>{profile.hometown}</strong></div><div><span>Emergency</span><strong>{tenant.emergencyName ? `${tenant.emergencyName}${tenant.emergencyPhone ? ` · ${tenant.emergencyPhone}` : ''}` : 'Not recorded'}</strong></div><div><span>Allotted</span><strong>{new Date(`${tenant.allotment}T00:00:00`).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</strong></div></section>
     )}
     <section className="drawer-section"><div className="section-title"><h3>Rent standing</h3><span className={`pill ${balance?'part':'settled'}`}>{balance?'Balance due':'All clear'}</span></div><div className="rent-standing"><div><span>Monthly rent</span><strong>{money.format(tenant.rent)}</strong></div><div><span>Security deposit</span><strong>{money.format(tenant.security)}</strong></div><div className={balance?'highlight':''}><span>Total balance</span><strong>{balance?money.format(balance):'₹0'}</strong></div>{tenant.monthly && tenant.monthly.expected > 0 && (() => { const m = tenant.monthly!; return <div className={m.status === 'paid' ? '' : 'highlight'}><span>Rent · {formatPeriod(m.period)}</span><strong>{m.status === 'paid' ? 'Paid ✓' : m.status === 'partial' ? `${money.format(Math.max(0, m.expected - m.paid))} left` : money.format(m.expected)}</strong></div>; })()}</div></section>
-    <section className="drawer-section"><div className="section-title"><h3>Documents</h3></div><div className="docs"><div><i>⌑</i><p><strong>Identity & address proof</strong><span>{profile.kyc==='verified'?'Verified and on file':'Needs verification'}</span></p><b className={profile.kyc}>{profile.kyc==='verified'?'✓':'!'}</b></div><div><i>≡</i><p><strong>Rental agreement</strong><span>Valid until {profile.agreementEnd}</span></p><b className="verified">✓</b></div></div></section>
-    <section className="drawer-section"><div className="section-title"><h3>Recent receipts</h3></div>{receipts.length ? <div className="receipts">{receipts.map((item,index)=><div key={`${item.id || index}`}><i>₹</i><p><strong>{money.format(item.amount)}</strong><span>{item.note} · {item.mode}</span></p><button className="receipt-print" aria-label={`Print receipt of ${money.format(item.amount)}`} title="Print receipt" onClick={() => printReceipt(tenant, propertyName, item, balance)}>⎙</button>{onVoidReceipt && item.id > 0 && <button className="receipt-void" aria-label={`Void receipt of ${money.format(item.amount)}`} title="Void receipt" onClick={() => onVoidReceipt(item.id)}>×</button>}<time>{item.date}</time></div>)}</div> : <p className="no-receipts">No receipts yet — record the first payment to start the ledger.</p>}</section>
+    <section className="drawer-section"><div className="section-title"><h3>Documents</h3></div><p className="no-receipts">Document status is shown in the Documents workspace. Nothing is assumed or marked verified here.</p></section>
+    <section className="drawer-section"><div className="section-title"><h3>Recent receipts</h3></div>{receipts.length ? <div className="receipts">{receipts.map((item,index)=><div key={`${item.id || index}`}><i>₹</i><p><strong>{money.format(item.amount)}</strong><span>{item.note} · {item.mode}{item.receiptNumber ? ` · ${item.receiptNumber}` : ''}</span></p>{item.hasProof && <a className="receipt-print" href={`/api/payments?proofId=${item.id}`} aria-label={`Download payment proof for ${money.format(item.amount)}`} title={item.proofName || 'Download payment proof'}>⌑</a>}<button className="receipt-print" aria-label={`Print receipt of ${money.format(item.amount)}`} title="Print receipt" onClick={() => printReceipt(tenant, propertyName, item, balance)}>⎙</button>{onVoidReceipt && item.id > 0 && <button className="receipt-void" aria-label={`Void receipt of ${money.format(item.amount)}`} title="Void receipt" onClick={() => onVoidReceipt(item.id)}>×</button>}<time>{item.date}</time></div>)}</div> : <p className="no-receipts">No receipts yet — record the first payment to start the ledger.</p>}</section>
     {onVacate && <section className="drawer-section"><div className="section-title"><h3>Tenancy</h3></div><div className="vacate-row"><p>Checked out? Closing the tenancy frees the bed and keeps every receipt on file.</p><button className="quiet-button danger" onClick={onVacate}>Vacate bed</button></div></section>}
   </div></aside></div>;
 }
 
 function AddTenantModal({ availableBeds, draftDate, draftRent, defaultSecurity, onDate, onRent, onClose, onSubmit }: { availableBeds: {room:string;bed:string}[]; draftDate:string; draftRent:number; defaultSecurity:number; onDate:(value:string)=>void; onRent:(value:number)=>void; onClose:()=>void; onSubmit:(event:FormEvent<HTMLFormElement>)=>void }) {
-  return <div className="modal-layer" onMouseDown={onClose}><section className="modal" role="dialog" aria-modal="true" aria-label="New allotment" onMouseDown={(event)=>event.stopPropagation()}><button className="modal-close" aria-label="Close" onClick={onClose}>×</button><p className="overline">NEW ALLOTMENT</p><h2>Move a tenant in</h2><p className="modal-copy">Create their record, assign a bed and calculate the exact first-month amount.</p><form onSubmit={onSubmit}><label>Full name<input name="name" required autoFocus placeholder="Tenant’s name" /></label><label>Phone number<input name="phone" inputMode="tel" autoComplete="tel" placeholder="Optional for now" /></label><div className="form-row"><label>Vacant bed<select name="bed" required>{availableBeds.map(({room,bed})=><option key={`${room}-${bed}`} value={`${room}-${bed}`}>Room {room} · Bed {bed}</option>)}</select></label><label>Allotment date<input name="allotment" type="date" value={draftDate} onChange={(event)=>onDate(event.target.value)} required /></label></div><div className="form-row"><label>Monthly rent<input name="rent" type="number" min="1" inputMode="numeric" value={draftRent} onChange={(event)=>onRent(Number(event.target.value))} required /></label><label>Security deposit<input name="security" type="number" min="0" inputMode="numeric" defaultValue={defaultSecurity} required /></label></div><div className="calculation"><span>First-month rent</span><strong>{money.format(proratedRent(draftRent,draftDate))}</strong><small>Calculated for the remaining days, including the move-in date.</small></div>{availableBeds.length === 0 && <p className="auth-error">No vacant beds right now — add another property or adjust the room plan.</p>}<button className="main-button full" type="submit" disabled={availableBeds.length === 0}>Create allotment</button></form></section></div>;
+  return <div className="modal-layer" onMouseDown={onClose}><section className="modal" role="dialog" aria-modal="true" aria-label="New allotment" onMouseDown={(event)=>event.stopPropagation()}><button className="modal-close" aria-label="Close" onClick={onClose}>×</button><p className="overline">NEW ALLOTMENT</p><h2>Move a tenant in</h2><p className="modal-copy">Create the resident record, assign a bed and calculate the exact first-month amount.</p><form onSubmit={onSubmit}><label>Full name<input name="name" required autoFocus placeholder="Tenant’s name" /></label><div className="form-row"><label>Phone number<input name="phone" inputMode="tel" autoComplete="tel" placeholder="Required for reminders" /></label><label>Email<input name="email" type="email" placeholder="Optional" /></label></div><div className="form-row"><label>Occupation<input name="occupation" placeholder="Optional" /></label><label>Hometown<input name="hometown" placeholder="Optional" /></label></div><div className="form-row"><label>Emergency contact<input name="emergencyName" placeholder="Optional" /></label><label>Emergency phone<input name="emergencyPhone" inputMode="tel" placeholder="Optional" /></label></div><div className="form-row"><label>Vacant bed<select name="bed" required>{availableBeds.map(({room,bed})=><option key={`${room}-${bed}`} value={`${room}-${bed}`}>Room {room} · Bed {bed}</option>)}</select></label><label>Allotment date<input name="allotment" type="date" value={draftDate} onChange={(event)=>onDate(event.target.value)} required /></label></div><div className="form-row"><label>Monthly rent<input name="rent" type="number" min="1" inputMode="numeric" value={draftRent} onChange={(event)=>onRent(Number(event.target.value))} required /></label><label>Security deposit<input name="security" type="number" min="0" inputMode="numeric" defaultValue={defaultSecurity} required /></label></div><div className="calculation"><span>First-month rent</span><strong>{money.format(proratedRent(draftRent,draftDate))}</strong><small>Calculated for the remaining days, including the move-in date.</small></div>{availableBeds.length === 0 && <p className="auth-error">No vacant beds right now — add another property or adjust the room plan.</p>}<button className="main-button full" type="submit" disabled={availableBeds.length === 0}>Create allotment</button></form></section></div>;
 }
 
 function PaymentModal({ tenant, onClose, onSubmit }: { tenant: Tenant; onClose:()=>void; onSubmit:(event:FormEvent<HTMLFormElement>)=>void }) {
-  return <div className="modal-layer" onMouseDown={onClose}><section className="modal payment-modal" role="dialog" aria-modal="true" aria-label="Record receipt" onMouseDown={(event)=>event.stopPropagation()}><button className="modal-close" aria-label="Close" onClick={onClose}>×</button><p className="overline">RECORD RECEIPT</p><h2>{tenant.name}</h2><p className="modal-copy">Room {tenant.room} · Bed {tenant.bed} · <b>{money.format(balanceFor(tenant))}</b> outstanding</p><form onSubmit={onSubmit}><label>Amount received<input name="amount" type="number" min="1" max={balanceFor(tenant)} defaultValue={balanceFor(tenant)} required /></label><div className="form-row"><label>Received on<input name="date" type="date" defaultValue={todayISO()} required /></label><label>Payment mode<select name="mode" defaultValue="UPI"><option>UPI</option><option>Cash</option><option>Bank transfer</option></select></label></div><label>Reference or note<input name="reference" placeholder="Optional UTR or note" /></label><button className="main-button full" type="submit">Save receipt</button></form></section></div>;
+  return <div className="modal-layer" onMouseDown={onClose}><section className="modal payment-modal" role="dialog" aria-modal="true" aria-label="Record receipt" onMouseDown={(event)=>event.stopPropagation()}><button className="modal-close" aria-label="Close" onClick={onClose}>×</button><p className="overline">RECORD RECEIPT</p><h2>{tenant.name}</h2><p className="modal-copy">Room {tenant.room} · Bed {tenant.bed} · <b>{money.format(balanceFor(tenant))}</b> outstanding</p><form onSubmit={onSubmit}><label>Amount received<input name="amount" type="number" min="1" max={balanceFor(tenant)} defaultValue={balanceFor(tenant)} required /></label><div className="form-row"><label>Received on<input name="date" type="date" defaultValue={todayISO()} required /></label><label>Payment mode<select name="mode" defaultValue="UPI"><option>UPI</option><option>Cash</option><option>Bank transfer</option></select></label></div><label>Reference or note<input name="reference" placeholder="Optional UTR or note" /></label><label>Payment screenshot <small>optional, PDF/JPG/PNG/WebP up to 8 MB</small><input name="proof" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" /></label><button className="main-button full" type="submit">Save receipt</button></form></section></div>;
 }
 
 function MaintenanceModal({ tenants, onClose, onSubmit }: { tenants: Tenant[]; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
