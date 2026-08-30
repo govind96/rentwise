@@ -4,6 +4,10 @@ RentWise is an owner-first operating system for Indian PGs, hostels and
 co-living properties. It runs on Cloudflare Workers with D1 for structured
 records and R2 for private resident documents.
 
+## Live site
+
+[Open RentWise](https://rentwise-villa-26.gspabusar.chatgpt.site/)
+
 ## Product coverage
 
 - Multi-property setup with flexible room and bed layouts
