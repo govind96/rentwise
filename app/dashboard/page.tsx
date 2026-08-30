@@ -1,7 +1,7 @@
 'use client';
+/* eslint-disable @next/next/no-html-link-for-pages */
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import BrandMark from '../components/BrandMark';
 import ThemeToggle from '../components/ThemeToggle';
 import PropertyOnboarding, { PropertyDraft, PropertyPreset, roomOccupancies } from './onboarding';
@@ -725,7 +725,7 @@ function Workspace() {
   }
 
   if (access === 'loading') return <div className="prod-auth-gate"><BrandMark /><span className="gate-spinner" /><h1>Opening your workspace</h1><p>Connecting your properties, residents and ledger…</p></div>;
-  if (access === 'signed-out') return <div className="prod-auth-gate"><BrandMark /><p className="overline">OWNER ACCESS</p><h1>Sign in to RentWise</h1><p>Your property and resident data is available only in your owner account.</p><Link className="main-button" href="/login">Continue to sign in →</Link><Link className="quiet-button" href="/tenant">I’m a resident</Link><Link className="quiet-button" href="/#top">Back to RentWise</Link></div>;
+  if (access === 'signed-out') return <div className="prod-auth-gate"><BrandMark /><p className="overline">OWNER ACCESS</p><h1>Sign in to RentWise</h1><p>Your property and resident data is available only in your owner account.</p><a className="main-button" href="/login">Continue to sign in →</a><a className="quiet-button" href="/tenant">I’m a resident</a><a className="quiet-button" href="/#top">Back to RentWise</a></div>;
   if (access === 'error') return <div className="prod-auth-gate"><BrandMark /><p className="overline">CONNECTION ISSUE</p><h1>We couldn’t open the workspace</h1><p>No changes were made. Check your connection and try again.</p><button className="main-button" onClick={() => window.location.reload()}>Try again</button></div>;
 
   return (

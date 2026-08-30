@@ -1,7 +1,7 @@
 'use client';
+/* eslint-disable @next/next/no-html-link-for-pages */
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import BrandMark from './components/BrandMark';
 import ThemeToggle from './components/ThemeToggle';
 
@@ -48,9 +48,9 @@ export default function Landing() {
       <div className="land-glow" aria-hidden="true" />
 
       <header className="land-nav">
-        <Link className="land-brand" href="/#top">
+        <a className="land-brand" href="/#top">
           <BrandMark /><strong>RentWise</strong>
-        </Link>
+        </a>
         <nav className="land-links">
           <a href="#product">Product</a>
           <a href="#how">How it works</a>
