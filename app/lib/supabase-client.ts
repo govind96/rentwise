@@ -11,7 +11,9 @@ export function getSupabaseClient() {
         if (!response.ok) throw new Error('Sign-in is not configured yet.');
         return response.json() as Promise<{ url: string; publishableKey: string }>;
       })
-      .then(({ url, publishableKey }) => createClient(url, publishableKey));
+      .then(({ url, publishableKey }) => createClient(url, publishableKey, {
+        auth: { flowType: 'pkce', detectSessionInUrl: true, persistSession: true },
+      }));
   }
   return clientPromise;
 }

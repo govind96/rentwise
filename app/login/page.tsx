@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import BrandMark from '../components/BrandMark';
 import ThemeToggle from '../components/ThemeToggle';
 import AuthForm from '../components/AuthForm';
@@ -13,9 +12,11 @@ export default function Login() {
   return (
     <div className="auth-wrap">
       <section className="auth-panel">
-        <Link className="land-brand" href="/#top" style={{ color: '#fff' }}>
+        {/* Native anchors avoid client-route prefetching on a return-to-landing action. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a className="land-brand" href="/#top" style={{ color: '#fff' }}>
           <BrandMark /><strong>RentWise</strong>
-        </Link>
+        </a>
         <div className="auth-story">
           <p className="overline">RentWise</p>
           <h2>Your PG operations, in one workspace.</h2>
@@ -39,7 +40,8 @@ export default function Login() {
             to see their rent, receipts, documents and maintenance requests.
           </p>
           <AuthForm />
-          <Link className="quiet-button full auth-cta" href="/#product">Back to the product page</Link>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a className="quiet-button full auth-cta" href="/#product">Back to the product page</a>
           <p className="auth-foot">Encrypted in transit · Owner-scoped access · Audit history</p>
         </div>
       </section>
