@@ -206,7 +206,7 @@ export default function Landing() {
             <article className="step-card">
               <span className="step-num">1</span>
               <h3>Add the property details</h3>
-              <p>Set up rooms, sharing types, meals, electricity and resident policies in a guided five-step flow.</p>
+              <p>Set up rooms, sharing types, meals, electricity and resident policies in a guided four-step flow.</p>
               <span className="step-tag">Property setup</span>
             </article>
             <article className="step-card">

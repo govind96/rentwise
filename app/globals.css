@@ -246,6 +246,7 @@ a.main-button, a.quiet-button { text-decoration: none; }
 
 /* ---------- workspace ---------- */
 .workspace { margin-left: 272px; width: min(1720px, calc(100% - 272px)); margin-right: auto; min-height: 100vh; padding: 40px clamp(24px, 4vw, 68px) 72px; max-width: 1720px; }
+.view-stage, .view-stage > *, .surface { min-width: 0; }
 
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 24px; }
 .page-head h1 { margin: 8px 0 0; font-weight: 600; font-size: clamp(28px, 3vw, 38px); letter-spacing: -.025em; line-height: 1.1; }
@@ -1037,6 +1038,22 @@ a.main-button, a.quiet-button { text-decoration: none; }
 .nav-label-short { display: none; }
 
 .hero { max-width: 1180px; margin: 0 auto; padding: 88px 24px 0; text-align: center; position: relative; }
+.land-hero { isolation: isolate; }
+.land-hero::before {
+  content: ""; position: absolute; z-index: -2; pointer-events: none;
+  left: 50%; bottom: 0; transform: translateX(-50%);
+  width: min(1672px, 100vw); height: 430px;
+  background: url('/rentwise-paper-city-bg.png') center bottom / cover no-repeat;
+  opacity: .34;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.18) 18%, #000 48%);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.18) 18%, #000 48%);
+}
+.land-hero::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  inset: 48px -80px 0;
+  background: radial-gradient(ellipse at 50% 53%, var(--canvas) 0 34%, color-mix(in srgb, var(--canvas) 95%, transparent) 52%, transparent 78%);
+}
+[data-theme='dark'] .land-hero::before { opacity: .1; filter: saturate(.7); }
 .hero-badge {
   display: inline-flex; align-items: center; gap: 9px; padding: 7px 16px; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--lav) 38%, transparent); background: var(--glass);
@@ -1074,8 +1091,8 @@ a.main-button, a.quiet-button { text-decoration: none; }
 .land-prompt b i { font-style: normal; font-size: 12px; }
 
 /* pure-CSS product preview */
-.hero-preview { position: relative; max-width: 1080px; margin: 54px auto 0; padding: 0 24px; }
-.hero-floating-prompt { position: relative; z-index: 3; margin: 0 auto -27px; }
+.hero-preview { position: relative; max-width: 1080px; margin: 38px auto 0; padding: 0 24px; }
+.hero-floating-prompt { position: relative; z-index: 3; margin: 0 auto 18px; }
 .hero-floating-prompt:hover { transform: translateY(-2px); }
 .preview-window {
   border: 1px solid var(--line-strong); border-radius: 22px; overflow: hidden;
@@ -1571,7 +1588,7 @@ legend small { font-weight: 500; color: var(--muted); margin-left: 6px; font-siz
   .onboarding-rail { display: none; }
   .onboarding-main { padding: 30px 22px 20px; min-height: auto; }
   .onboarding-actions { margin-top: 18px; padding-top: 14px; }
-  .mobile-step { display: grid; gap: 6px; margin-bottom: 16px; }
+  .mobile-step { display: grid; gap: 6px; margin-bottom: 16px; padding-right: 48px; }
   .mobile-step span { font: 600 10px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
   .mobile-step strong { font-family: var(--font-display); font-size: 15px; }
   .mobile-step i { display: block; height: 6px; border-radius: 99px; background: var(--soft); overflow: hidden; }
@@ -1579,7 +1596,8 @@ legend small { font-weight: 500; color: var(--muted); margin-left: 6px; font-siz
   .auth-wrap { grid-template-columns: 1fr; }
   .auth-panel { padding: 32px 26px; gap: 24px; }
   .auth-story ul { display: none; }
-  .auth-stage { padding: 36px 18px; place-items: start center; }
+  .auth-stage { padding: 72px 18px 36px; place-items: start center; }
+  .auth-theme { top: 16px; right: 18px; }
 }
 @media (max-width: 760px) {
   .land-nav { gap: 14px; padding: 12px 16px; }
@@ -1588,9 +1606,12 @@ legend small { font-weight: 500; color: var(--muted); margin-left: 6px; font-siz
   .nav-label-short { display: inline; }
   .land-nav-actions .main-button { min-height: 38px; padding: 0 12px; font-size: 12px; }
   .hero { padding-top: 56px; }
+  .land-hero::before { bottom: 0; width: 185vw; height: 330px; opacity: .24; }
+  .land-hero::after { inset: 48px -16px 0; background: radial-gradient(ellipse at 50% 50%, var(--canvas) 0 42%, color-mix(in srgb, var(--canvas) 96%, transparent) 65%, transparent 90%); }
+  [data-theme='dark'] .land-hero::before { opacity: .08; }
   .hero-secondary-link { width: 100%; justify-content: center; min-height: 40px; }
   .land-prompt-copy em { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 12.5px; line-height: 1.28; }
-  .hero-preview { padding: 0 16px; margin-top: 46px; }
+  .hero-preview { padding: 0 16px; margin-top: 28px; }
   .pw-body { grid-template-columns: 1fr; }
   .pw-side { display: none; }
   .bento, .steps, .land-properties, .cta-band { padding-left: 16px; padding-right: 16px; }
