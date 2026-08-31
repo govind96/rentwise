@@ -59,8 +59,8 @@ export default function Landing() {
         <div className="land-nav-actions">
           <ThemeToggle compact />
           <a className="main-button" href="/login">
-            <span className="nav-label-full">Go to dashboard</span>
-            <span className="nav-label-short">Dashboard</span>
+            <span className="nav-label-full">Start managing your PG</span>
+            <span className="nav-label-short">Get started</span>
           </a>
         </div>
       </header>
@@ -75,7 +75,7 @@ export default function Landing() {
           </p>
 
           <div className="hero-ctas">
-            <a className="main-button" href="/login">Go to dashboard →</a>
+            <a className="main-button" href="/login">Start managing your PG →</a>
             <a className="hero-secondary-link" href="/login">Add your first property <span>→</span></a>
           </div>
           <p className="land-hint">OWNER-ONLY ACCESS · RENT &amp; OCCUPANCY RECORDS · BUILT FOR INDIA</p>
