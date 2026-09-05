@@ -76,9 +76,9 @@ export default function Landing() {
 
           <div className="hero-ctas">
             <a className="main-button" href="/login">Start managing your PG →</a>
-            <a className="hero-secondary-link" href="/login">Add your first property <span>→</span></a>
+            <a className="hero-secondary-link" href="/dashboard?demo=1">Try the live demo <span>→</span></a>
           </div>
-          <p className="land-hint">OWNER-ONLY ACCESS · RENT &amp; OCCUPANCY RECORDS · BUILT FOR INDIA</p>
+          <p className="land-hint">RECORDS YOU CAN TRUST · BUILT FOR INDIAN PGS · FREE LIVE DEMO</p>
         </section>
 
         {/* ---------- pure-CSS product preview ---------- */}
@@ -93,7 +93,7 @@ export default function Landing() {
           <div className="preview-window" role="img" aria-label="Preview of the RentWise owner dashboard">
             <div className="pw-bar">
               <span className="pw-dot" /><span className="pw-dot" /><span className="pw-dot" />
-              <span className="pw-url">rentwise.app/dashboard</span>
+              <span className="pw-url">rentwise · today</span>
             </div>
             <div className="pw-body" aria-hidden="true">
               <div className="pw-side">
@@ -305,7 +305,7 @@ export default function Landing() {
             <p>Sign in to add your property, allot beds, record payments and keep daily operations up to date.</p>
             <div className="cta-actions">
               <a className="main-button" href="/dashboard">Go to dashboard →</a>
-              <a className="quiet-button light" href="/dashboard?newProperty=1">Add a property</a>
+              <a className="quiet-button light" href="/dashboard?demo=1">Try the live demo</a>
             </div>
             <p className="cta-note">OWNER ACCOUNT REQUIRED · NO APP TO INSTALL</p>
           </div>

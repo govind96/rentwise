@@ -31,11 +31,21 @@ export async function POST(request: Request) {
   if (proof instanceof File && (!env.FILES || !['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(proof.type) || proof.size <= 0 || proof.size > 8 * 1024 * 1024)) {
     return apiError('Payment proof must be a PDF, JPG, PNG or WebP file up to 8 MB');
   }
-  const inserted = await env.DB.prepare(`INSERT INTO payments
-      (tenancy_id, amount, paid_on, mode, reference, status, idempotency_key, created_at)
-    VALUES (?, ?, ?, ?, ?, 'confirmed', ?, ?)`)
-    .bind(tenancyId, amount, paidOn, mode, textValue(body.reference, 160) || null, idempotencyKey || null, new Date().toISOString()).run();
-  const paymentId = inserted.meta.last_row_id as number;
+  let paymentId: number;
+  try {
+    const inserted = await env.DB.prepare(`INSERT INTO payments
+        (tenancy_id, amount, paid_on, mode, reference, status, idempotency_key, created_at)
+      VALUES (?, ?, ?, ?, ?, 'confirmed', ?, ?)`)
+      .bind(tenancyId, amount, paidOn, mode, textValue(body.reference, 160) || null, idempotencyKey || null, new Date().toISOString()).run();
+    paymentId = inserted.meta.last_row_id as number;
+  } catch (error) {
+    // Two concurrent requests with the same idempotency key: the unique index
+    // rejected the loser, so return the winner's receipt instead of a 500.
+    if (!idempotencyKey) throw error;
+    const existing = await env.DB.prepare('SELECT id, receipt_number FROM payments WHERE idempotency_key = ?').bind(idempotencyKey).first<{ id: number; receipt_number: string | null }>();
+    if (!existing) throw error;
+    return Response.json({ ok: true, paymentId: existing.id, receiptNumber: existing.receipt_number, duplicate: true });
+  }
   const receipt = receiptNumber(paymentId, paidOn);
   let proofKey: string | null = null;
   if (proof instanceof File) {

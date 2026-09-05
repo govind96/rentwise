@@ -13,7 +13,7 @@ async function residentOrError(request: Request, mutation = false) {
   return resident ?? apiError('Resident sign-in is required', 401);
 }
 
-function allocation(charges: Array<{ id: number; amount: number }>, payments: Array<{ amount: number }>) {
+function allocation<T extends { id: number; amount: number }>(charges: T[], payments: Array<{ amount: number }>) {
   let credit = payments.reduce((total, payment) => total + payment.amount, 0);
   return charges.map((charge) => {
     const paid = Math.min(charge.amount, credit); credit -= paid;
