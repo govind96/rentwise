@@ -102,10 +102,20 @@ export async function PATCH(request: Request) {
   if (action === 'work_order_status') {
     const current = await env.DB.prepare('SELECT status FROM work_orders WHERE id=? AND property_id=?').bind(id, propertyId).first<{ status: string }>();
     if (!current) return apiError('Work order not found', 404);
-    const status = current.status === 'new' ? 'in_progress' : 'resolved';
+    // Clients may set an explicit status (e.g. cancel); without one the status advances.
+    const wanted = textValue(body.status, 20).replace('-', '_');
+    const status = ['in_progress', 'resolved', 'cancelled'].includes(wanted) ? wanted
+      : current.status === 'new' ? 'in_progress' : 'resolved';
     await env.DB.prepare('UPDATE work_orders SET status=?, resolved_at=?, updated_at=? WHERE id=?')
       .bind(status, status === 'resolved' ? now : null, now, id).run();
-    await audit(owner, propertyId, 'status', 'work_order', id, `Work order moved to ${status}`);
+    await audit(owner, propertyId, 'status', 'work_order', id, `Work order moved to ${status.replace('_', ' ')}`);
+    return Response.json({ ok: true });
+  }
+
+  if (action === 'expense_delete') {
+    const deleted = await env.DB.prepare('DELETE FROM expenses WHERE id=? AND property_id=?').bind(id, propertyId).run();
+    if (!deleted.meta.changes) return apiError('Expense not found', 404);
+    await audit(owner, propertyId, 'delete', 'expense', id, 'Deleted an operating expense');
     return Response.json({ ok: true });
   }
 

@@ -14,7 +14,7 @@ export async function requireOwner(request: Request, mutation = false): Promise<
   return owner ?? apiError('Sign in is required', 401);
 }
 
-export function isResponse(value: OwnerContext | Response): value is Response {
+export function isResponse(value: unknown): value is Response {
   return value instanceof Response;
 }
 

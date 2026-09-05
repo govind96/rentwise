@@ -105,7 +105,7 @@ export async function GET(request: Request) {
     };
   });
 
-  const [bookingRows, expenseRows, orderRows, documentRows, noticeRows] = await Promise.all([
+  const [bookingRows, expenseRows, orderRows, documentRows, noticeRows, activityRows, collectionRows] = await Promise.all([
     env.DB.prepare(`SELECT id, prospect_name, phone, expected_move_in, preferred_sharing, quoted_rent, token_amount, source, status
       FROM bookings WHERE property_id = ? ORDER BY expected_move_in, id DESC`).bind(active.id).all<Record<string, string | number | null>>(),
     env.DB.prepare(`SELECT id, category, amount, spent_on, vendor, notes FROM expenses WHERE property_id = ? ORDER BY spent_on DESC, id DESC`)
@@ -119,6 +119,13 @@ export async function GET(request: Request) {
     env.DB.prepare(`SELECT t.id, t.tenant_name, b.room_no, t.notice_given_on, t.planned_exit_on, t.deposit_refunded
       FROM tenancies t JOIN beds b ON b.id = t.bed_id WHERE b.property_id = ? AND t.status = 'notice' ORDER BY t.planned_exit_on`)
       .bind(active.id).all<Record<string, string | number | null>>(),
+    env.DB.prepare(`SELECT action, entity_type, summary, created_at FROM audit_events
+      WHERE owner_id = ? AND (property_id = ? OR property_id IS NULL) ORDER BY id DESC LIMIT 6`)
+      .bind(ownerId, active.id).all<{ action: string; entity_type: string; summary: string; created_at: string }>(),
+    env.DB.prepare(`SELECT substr(py.paid_on, 1, 7) AS month, SUM(py.amount) AS amount FROM payments py
+      JOIN tenancies t ON t.id = py.tenancy_id JOIN beds b ON b.id = t.bed_id
+      WHERE b.property_id = ? AND py.status = 'confirmed' GROUP BY month ORDER BY month DESC LIMIT 12`)
+      .bind(active.id).all<{ month: string; amount: number }>(),
   ]);
 
   return Response.json({
@@ -129,6 +136,8 @@ export async function GET(request: Request) {
     orders: orderRows.results.map((row) => ({ id: row.id, title: row.title, room: row.room_no ?? '', tenant: row.tenancy_id ? 'Resident reported' : 'Owner reported', category: row.category, priority: row.priority, status: String(row.status).replace('_', '-'), opened: row.created_at ? new Date(String(row.created_at)).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '' })),
     documents: documentRows.results.map((row) => ({ id: row.id, tenancyId: row.tenancy_id, kind: row.kind, label: row.label, originalName: row.original_name, contentType: row.content_type, sizeBytes: row.size_bytes, status: row.verification_status, expiresOn: row.expires_on })),
     exitNotices: noticeRows.results.map((row) => ({ id: row.id, tenantId: row.id, tenantName: row.tenant_name, room: row.room_no, givenOn: row.notice_given_on, vacateOn: row.planned_exit_on, depositStatus: Number(row.deposit_refunded) ? 'refunded' : 'review', status: 'open' })),
+    activity: activityRows.results.map((row) => ({ action: row.action, entityType: row.entity_type, summary: row.summary, at: row.created_at })),
+    monthlyCollections: collectionRows.results.map((row) => ({ month: row.month, amount: row.amount })),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

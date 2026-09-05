@@ -122,8 +122,14 @@ async function ensureColumns(table: string, wanted: Record<string, string>) {
   }
 }
 
+/** Calendar month in the platform's billing timezone — UTC would lag IST by 5½ hours. */
 export function currentPeriod() {
-  return new Date().toISOString().slice(0, 7);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit' }).format(new Date());
+}
+
+/** Today's date in the billing timezone, as YYYY-MM-DD. */
+export function currentISTDate() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
 function addMonths(period: string, count: number) {

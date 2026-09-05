@@ -19,7 +19,7 @@ export type ResidentContext = {
   monthlyRent: number;
 };
 
-type ExternalUser = { id: string; email?: string; user_metadata?: { full_name?: string; name?: string } };
+type ExternalUser = { id: string; email?: string; email_confirmed_at?: string | null; confirmed_at?: string | null; user_metadata?: { full_name?: string; name?: string } };
 
 function decodeDisplayName(request: Request) {
   const encoded = request.headers.get('oai-authenticated-user-full-name');
@@ -59,6 +59,10 @@ export async function getAuthenticatedIdentity(request: Request): Promise<{ plat
     if (!response.ok) return null;
     const user = await response.json() as ExternalUser;
     if (!user.id || !user.email) return null;
+    // Owner and resident access are granted by email match, so an unconfirmed
+    // signup must never resolve to an identity — otherwise anyone could claim
+    // an arbitrary email and inherit that account's access.
+    if (!user.email_confirmed_at && !user.confirmed_at) return null;
     platformUserId = `supabase:${user.id}`; email = user.email.trim().toLowerCase(); name = String(user.user_metadata?.full_name || user.user_metadata?.name || '').trim().slice(0, 120);
   }
   if (!platformUserId || !email || email.length > 254) return null;
@@ -78,7 +82,13 @@ export async function getOwnerContext(request: Request): Promise<OwnerContext | 
     FROM owners WHERE platform_user_id = ? OR email = ? ORDER BY platform_user_id = ? DESC LIMIT 1`)
     .bind(platformUserId, email, platformUserId).first<{ id: number; email: string; display_name: string }>();
   if (!owner) return null;
-  await env.DB.prepare(`UPDATE owners SET platform_user_id = ?, display_name = CASE WHEN ? != '' THEN ? ELSE display_name END, last_seen_at = ? WHERE id = ?`)
+  // Never overwrite an existing platform identity: matching is by id OR email,
+  // so overwriting would let a second login method silently re-bind the account.
+  await env.DB.prepare(`UPDATE owners SET
+      platform_user_id = COALESCE(platform_user_id, ?),
+      display_name = CASE WHEN ? != '' THEN ? ELSE display_name END,
+      last_seen_at = ?
+    WHERE id = ?`)
     .bind(platformUserId, name, name, now, owner.id).run();
   return { id: owner.id, platformUserId, email: owner.email, name: name || owner.display_name };
 }
