@@ -77,6 +77,26 @@ export async function GET(request: Request) {
   return new Response(object.body, { headers: { 'Content-Type': payment.proof_content_type || 'application/octet-stream', 'Content-Disposition': `attachment; filename="${name}"`, 'Content-Length': String(object.size), 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
 }
 
+/** Owner reviews a resident payment submission: confirm issues the numbered receipt, reject marks it rejected. */
+export async function PATCH(request: Request) {
+  const owner = await requireOwner(request, true);
+  if (isResponse(owner)) return owner;
+  await ensureAppSchema();
+  const body = await request.json().catch(() => ({})) as { paymentId?: number; decision?: string };
+  const paymentId = Number(body.paymentId); const decision = body.decision === 'reject' ? 'rejected' : 'confirmed';
+  if (!paymentId) return apiError('Payment submission is required');
+  const payment = await env.DB.prepare(`SELECT py.id, py.amount, py.mode, py.paid_on, b.property_id FROM payments py
+    JOIN tenancies t ON t.id = py.tenancy_id JOIN beds b ON b.id = t.bed_id JOIN properties p ON p.id = b.property_id
+    WHERE py.id = ? AND p.owner_id = ? AND py.status = 'submitted'`).bind(paymentId, owner.id).first<{ id: number; amount: number; mode: string; paid_on: string; property_id: number }>();
+  if (!payment) return apiError('Pending payment submission not found', 404);
+  const receipt = decision === 'confirmed' ? receiptNumber(payment.id, payment.paid_on) : null;
+  await env.DB.prepare('UPDATE payments SET status = ?, receipt_number = ? WHERE id = ? AND status = ?')
+    .bind(decision, receipt, paymentId, 'submitted').run();
+  await audit(owner, payment.property_id, decision, 'payment', payment.id,
+    decision === 'confirmed' ? `Confirmed resident payment of ${payment.amount} via ${payment.mode}; receipt ${receipt}` : `Rejected resident payment submission of ${payment.amount}`);
+  return Response.json({ ok: true, receiptNumber: receipt });
+}
+
 export async function DELETE(request: Request) {
   const owner = await requireOwner(request, true);
   if (isResponse(owner)) return owner;

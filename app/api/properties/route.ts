@@ -105,7 +105,7 @@ export async function GET(request: Request) {
     };
   });
 
-  const [bookingRows, expenseRows, orderRows, documentRows, noticeRows, activityRows, collectionRows] = await Promise.all([
+  const [bookingRows, expenseRows, orderRows, documentRows, noticeRows, activityRows, collectionRows, submissionRows] = await Promise.all([
     env.DB.prepare(`SELECT id, prospect_name, phone, expected_move_in, preferred_sharing, quoted_rent, token_amount, source, status
       FROM bookings WHERE property_id = ? ORDER BY expected_move_in, id DESC`).bind(active.id).all<Record<string, string | number | null>>(),
     env.DB.prepare(`SELECT id, category, amount, spent_on, vendor, notes FROM expenses WHERE property_id = ? ORDER BY spent_on DESC, id DESC`)
@@ -126,6 +126,11 @@ export async function GET(request: Request) {
       JOIN tenancies t ON t.id = py.tenancy_id JOIN beds b ON b.id = t.bed_id
       WHERE b.property_id = ? AND py.status = 'confirmed' GROUP BY month ORDER BY month DESC LIMIT 12`)
       .bind(active.id).all<{ month: string; amount: number }>(),
+    env.DB.prepare(`SELECT py.id, py.tenancy_id, py.amount, py.paid_on, py.mode, py.reference, py.proof_original_name, py.created_at,
+        t.tenant_name, b.room_no, b.bed_no
+      FROM payments py JOIN tenancies t ON t.id = py.tenancy_id JOIN beds b ON b.id = t.bed_id
+      WHERE b.property_id = ? AND py.status = 'submitted' ORDER BY py.id DESC`)
+      .bind(active.id).all<Record<string, string | number | null>>(),
   ]);
 
   return Response.json({
@@ -138,6 +143,7 @@ export async function GET(request: Request) {
     exitNotices: noticeRows.results.map((row) => ({ id: row.id, tenantId: row.id, tenantName: row.tenant_name, room: row.room_no, givenOn: row.notice_given_on, vacateOn: row.planned_exit_on, depositStatus: Number(row.deposit_refunded) ? 'refunded' : 'review', status: 'open' })),
     activity: activityRows.results.map((row) => ({ action: row.action, entityType: row.entity_type, summary: row.summary, at: row.created_at })),
     monthlyCollections: collectionRows.results.map((row) => ({ month: row.month, amount: row.amount })),
+    submissions: submissionRows.results.map((row) => ({ id: row.id, tenancyId: row.tenancy_id, tenantName: row.tenant_name, room: row.room_no, bed: row.bed_no, amount: row.amount, paidOn: row.paid_on, mode: row.mode, reference: row.reference, proofName: row.proof_original_name, at: row.created_at })),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

@@ -12,9 +12,9 @@ import PropertyOnboarding, { PropertyDraft, PropertyPreset, roomOccupancies } fr
 import {
   apiRequest, balanceFor, ConfirmDialog, dueFor, heroExamples, isPortfolioProperty, money, timeOfDay,
   NAV_ICONS, NavIcon, PORTFOLIO_STORAGE_KEY, proratedRent, profileFor, propertyInitials,
-  seededBookings, seededExpenses, seededInventory, seededMonthlyCollections, seededNotices, seededOrders, seededProperty, seededTenants,
+  seededBookings, seededExpenses, seededInventory, seededMonthlyCollections, seededNotices, seededOrders, seededProperty, seededSubmissions, seededTenants,
   todayISO, viewCopy,
-  type ActivityEvent, type Booking, type ExitNotice, type Expense, type MonthlyCollection, type PropertyInfo, type PortfolioProperty,
+  type ActivityEvent, type Booking, type ExitNotice, type Expense, type MonthlyCollection, type PaymentSubmission, type PropertyInfo, type PortfolioProperty,
   type RealBed, type Receipt, type ResidentInvite, type RoomInventory, type Tenant, type TenantDocument,
   type View, type WorkOrder,
 } from './shared';
@@ -49,6 +49,7 @@ function Workspace() {
   const [documents, setDocuments] = useState<TenantDocument[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [monthlyCollections, setMonthlyCollections] = useState<MonthlyCollection[]>([]);
+  const [submissions, setSubmissions] = useState<PaymentSubmission[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'paid'>('all');
   const [modal, setModal] = useState<'tenant' | 'payment' | 'maintenance' | 'booking' | 'expense' | 'notice' | 'document' | null>(null);
@@ -126,7 +127,7 @@ function Workspace() {
     const suffix = propertyId ? `?propertyId=${propertyId}` : '';
     authFetch(`/api/properties${suffix}`)
       .then((response) => response.ok ? response.json() as Promise<{
-        properties: PropertyInfo[]; property: PropertyInfo | null; beds: RealBed[]; orders: WorkOrder[]; bookings: Booking[]; expenses: Expense[]; exitNotices: ExitNotice[]; documents: TenantDocument[]; activity?: ActivityEvent[]; monthlyCollections?: MonthlyCollection[];
+        properties: PropertyInfo[]; property: PropertyInfo | null; beds: RealBed[]; orders: WorkOrder[]; bookings: Booking[]; expenses: Expense[]; exitNotices: ExitNotice[]; documents: TenantDocument[]; activity?: ActivityEvent[]; monthlyCollections?: MonthlyCollection[]; submissions?: PaymentSubmission[];
         tenants: { id: number; room: string; bed: string; name: string; phone: string | null; allotment: string;
           rent: number; security: number; firstMonthRent: number; received: number; email?: string | null; occupation?: string | null; hometown?: string | null; emergencyName?: string | null; emergencyPhone?: string | null;
           chargesTotal?: number; balance?: number; monthly?: Tenant['monthly'];
@@ -159,6 +160,7 @@ function Workspace() {
         setOrders(data.orders ?? []); setBookings(data.bookings ?? []); setExpenses(data.expenses ?? []); setExitNotices(data.exitNotices ?? []); setDocuments(data.documents ?? []);
         setActivity(data.activity ?? []);
         setMonthlyCollections(data.monthlyCollections ?? []);
+        setSubmissions(data.submissions ?? []);
         setAccess('ready');
       })
       .catch(() => { setAccess('error'); showToast('Could not refresh the workspace'); });
@@ -187,7 +189,7 @@ function Workspace() {
         setPortfolio([seededProperty]); setProperties([seededProperty]); setProperty(seededProperty); setActivePropertyId(seededProperty.id);
         setTenants(seededTenants); setOrders(seededOrders); setDemoInventory(seededInventory);
         setBookings(seededBookings); setExpenses(seededExpenses); setExitNotices(seededNotices); setDocuments([]);
-        setMonthlyCollections(seededMonthlyCollections);
+        setMonthlyCollections(seededMonthlyCollections); setSubmissions(seededSubmissions);
         setDraftRent(seededProperty.defaultRent ?? 3000);
         setAccess('ready');
         if (params.get('newProperty') === '1') setPropertyOnboardingOpen(true);
@@ -409,6 +411,24 @@ function Workspace() {
       const next = expenses.filter((item) => item.id !== id);
       setExpenses(next); persistOperations(bookings, next, exitNotices); showToast('Expense deleted');
     });
+  }
+  function decideSubmission(id: number, decision: 'confirm' | 'reject') {
+    const submission = submissions.find((item) => item.id === id); if (!submission) return;
+    if (decision === 'reject') {
+      askConfirm('Reject this payment submission?', `${money.format(submission.amount)} from ${submission.tenantName} (${submission.reference || 'no reference'}) will be marked rejected. The resident keeps their proof; nothing enters your ledger.`, 'Reject submission', () => decideSubmissionNow(id, decision, submission));
+      return;
+    }
+    askConfirm('Confirm and issue receipt?', `${money.format(submission.amount)} from ${submission.tenantName} (${submission.mode} · ${submission.reference || 'no reference'}) will be recorded against their ledger with a numbered receipt.`, 'Confirm payment', () => decideSubmissionNow(id, decision, submission));
+  }
+  function decideSubmissionNow(id: number, decision: 'confirm' | 'reject', submission: PaymentSubmission) {
+    if (!demo && activePropertyId) {
+      void apiRequest('/api/payments', { method: 'PATCH', body: JSON.stringify({ paymentId: id, decision }) })
+        .then(() => { showToast(decision === 'confirm' ? `Receipt issued for ${money.format(submission.amount)}` : 'Payment submission rejected'); loadRealData(activePropertyId); })
+        .catch((error: Error) => showToast(error.message));
+      return;
+    }
+    setSubmissions((current) => current.filter((item) => item.id !== id));
+    showToast(decision === 'confirm' ? `Receipt issued for ${money.format(submission.amount)}` : 'Payment submission rejected');
   }
   function addMaintenance(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -637,7 +657,7 @@ function Workspace() {
         {view === 'property' && property && <PropertyView property={property} tenants={tenants} inventory={inventory} availableCount={availableBeds.length} onTenant={setDrawerId} onAdd={() => setModal('tenant')} onEdit={() => setPropEditOpen(true)} onNewProperty={openPropertyOnboarding} />}
         {view === 'property' && !property && <div className="empty"><strong>No property yet</strong><span>Set up your rooms, beds and rent defaults to open the floor plan.</span><button className="main-button" onClick={openPropertyOnboarding}>＋ Set up your property</button></div>}
         {view === 'tenants' && <TenantsView tenants={filteredTenants} totals={{ active: tenants.length, verified: tenants.filter((tenant) => profileFor(tenant).kyc === 'verified').length, clear: tenants.filter((tenant) => balanceFor(tenant) === 0).length, rooms: new Set(tenants.map((tenant) => tenant.room)).size }} query={query} filter={filter} onQuery={setQuery} onFilter={setFilter} onTenant={setDrawerId} onPayment={openPayment} rentDueDay={property?.rentDueDay ?? 5} />}
-        {view === 'rent' && <RentView tenants={tenants} metrics={metrics} propertyName={propertyLabel} history={realHistory} onTenant={setDrawerId} onPayment={openPayment} />}
+        {view === 'rent' && <RentView tenants={tenants} metrics={metrics} propertyName={propertyLabel} history={realHistory} submissions={submissions} onDecision={decideSubmission} onTenant={setDrawerId} onPayment={openPayment} />}
         {view === 'bookings' && <BookingsView bookings={bookings} notices={exitNotices} onAddBooking={() => setModal('booking')} onAddNotice={() => setModal('notice')} onAdvanceBooking={advanceBooking} onCancelBooking={cancelBooking} onAdvanceNotice={advanceNotice} />}
         {view === 'finance' && <FinanceView expenses={expenses} monthlyCollections={monthlyCollections} onAdd={() => setModal('expense')} onDelete={deleteExpense} />}
         {view === 'documents' && <><PaymentProofQueue tenants={tenants} documents={documents} onPayment={openPayment} onReview={reviewDocument} /><DocumentsView tenants={tenants} documents={documents} onUpload={() => setModal('document')} onReview={reviewDocument} onDelete={deleteDocument} /></>}

@@ -183,7 +183,12 @@ const seededInventory: RoomInventory = [
 ];
 
 export type MonthlyCollection = { month: string; amount: number };
+export type PaymentSubmission = { id: number; tenancyId: number; tenantName: string; room: string; bed: string; amount: number; paidOn: string; mode: string; reference: string | null; proofName: string | null; at: string };
 const seedMonth = (offset: number) => { const date = new Date(); date.setDate(1); date.setMonth(date.getMonth() - offset); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; };
+const seededSubmissions: PaymentSubmission[] = [
+  { id: 1, tenancyId: 5, tenantName: 'Navya Kumari', room: '12', bed: 'A', amount: 3500, paidOn: inDays(-2), mode: 'UPI', reference: 'UPI/439201877456', proofName: 'upi-receipt.png', at: new Date(Date.now() - 36e5 * 5).toISOString() },
+];
+
 const seededMonthlyCollections: MonthlyCollection[] = [
   { month: seedMonth(0), amount: 71337 },
   { month: seedMonth(1), amount: 62400 },
@@ -270,7 +275,7 @@ export function ConfirmDialog({ state, onClose }: { state: { title: string; mess
 
 export {
   apiRequest, waLink, printReceipt, NAV_ICONS, NavIcon,
-  seededTenants, seededOrders, seededBookings, seededExpenses, seededNotices, seededInventory, seededProperty, seededMonthlyCollections,
+  seededSubmissions, seededTenants, seededOrders, seededBookings, seededExpenses, seededNotices, seededInventory, seededProperty, seededMonthlyCollections,
   PORTFOLIO_STORAGE_KEY, isPortfolioProperty, propertyInitials, dueFor, balanceFor,
   formatPeriod, todayISO, longDate, timeOfDay, profileFor, proratedRent, heroExamples, viewCopy, money, shortMoney,
 };
