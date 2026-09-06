@@ -13,6 +13,7 @@ records and R2 for private resident documents.
 - Multi-property setup with flexible room and bed layouts
 - Owner-scoped access through Sites authentication
 - Resident onboarding, bed allotment, notices and checkout
+- Resident payment submissions with owner confirmation and numbered receipts
 - Idempotent charge generation for deposits, prorated move-ins and monthly rent
 - Split-payment ledger, numbered receipts, WhatsApp-ready reminders and void audit trail
 - Booking pipeline, operating expenses and profitability view

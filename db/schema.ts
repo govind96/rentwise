@@ -103,7 +103,7 @@ export const payments = sqliteTable('payments', {
   paidOn: text('paid_on').notNull(),
   mode: text('mode', { enum: ['UPI', 'Cash', 'Bank transfer'] }).notNull(),
   reference: text('reference'),
-  status: text('status', { enum: ['confirmed', 'voided', 'refunded'] }).notNull().default('confirmed'),
+  status: text('status', { enum: ['submitted', 'confirmed', 'rejected', 'voided', 'refunded'] }).notNull().default('confirmed'),
   idempotencyKey: text('idempotency_key'),
   receiptNumber: text('receipt_number'),
   proofStorageKey: text('proof_storage_key'),

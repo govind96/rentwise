@@ -30,11 +30,12 @@ export async function GET(request: Request) {
     .bind(resident.tenancyId).first<{ id: number; allotment_date: string; monthly_rent: number; security_amount: number; first_month_rent: number; rent_due_day: number }>();
   if (!tenancy) return apiError('Your tenancy is no longer active', 404);
   await ensureTenancyLedger(tenancy);
-  const [chargeRows, paymentRows, documentRows, maintenanceRows] = await Promise.all([
+  const [chargeRows, paymentRows, documentRows, maintenanceRows, submissionRows] = await Promise.all([
     env.DB.prepare('SELECT id, kind, period, amount, due_on, status FROM charges WHERE tenancy_id=? ORDER BY due_on DESC, id DESC').bind(resident.tenancyId).all<{ id: number; kind: string; period: string; amount: number; due_on: string; status: string }>(),
     env.DB.prepare("SELECT id, amount, paid_on, mode, reference, receipt_number FROM payments WHERE tenancy_id=? AND status='confirmed' ORDER BY paid_on DESC, id DESC").bind(resident.tenancyId).all<{ id: number; amount: number; paid_on: string; mode: string; reference: string | null; receipt_number: string | null }>(),
     env.DB.prepare('SELECT id, kind, label, original_name, verification_status, created_at FROM documents WHERE tenancy_id=? ORDER BY created_at DESC').bind(resident.tenancyId).all<{ id: number; kind: string; label: string; original_name: string | null; verification_status: string; created_at: string }>(),
     env.DB.prepare('SELECT id, title, category, priority, status, created_at, updated_at FROM work_orders WHERE tenancy_id=? ORDER BY created_at DESC').bind(resident.tenancyId).all<{ id: number; title: string; category: string; priority: string; status: string; created_at: string; updated_at: string }>(),
+    env.DB.prepare("SELECT id, amount, paid_on, mode, reference, created_at FROM payments WHERE tenancy_id=? AND status='submitted' ORDER BY id DESC").bind(resident.tenancyId).all<{ id: number; amount: number; paid_on: string; mode: string; reference: string | null; created_at: string }>(),
   ]);
   const charges = allocation([...chargeRows.results].sort((a, b) => a.due_on.localeCompare(b.due_on) || a.id - b.id), paymentRows.results)
     .sort((a, b) => b.due_on.localeCompare(a.due_on) || b.id - a.id);
@@ -42,6 +43,7 @@ export async function GET(request: Request) {
   return Response.json({
     resident: { name: resident.tenantName, email: resident.email, property: resident.propertyName, room: resident.room, bed: resident.bed, monthlyRent: resident.monthlyRent },
     balance, charges, payments: paymentRows.results, documents: documentRows.results, maintenance: maintenanceRows.results,
+    submissions: submissionRows.results,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
