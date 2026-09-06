@@ -94,7 +94,7 @@ body {
   max-width: 100%; overflow-x: clip;
   background: var(--canvas);
   color: var(--ink);
-  font: 500 14.5px/1.6 var(--font-ui);
+  font: 500 16px/1.6 var(--font-ui);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   transition: background-color .25s ease, color .25s ease;
@@ -1880,3 +1880,105 @@ legend small { font-weight: 500; color: var(--muted); margin-left: 6px; font-siz
 .submission-queue .submission-detail { display: grid; gap: 2px; margin-left: auto; text-align: right; }
 .submission-queue .submission-detail strong { font-family: var(--font-display); font-size: 15px; }
 .submission-queue .submission-detail small { color: var(--muted); font-size: 11.5px; }
+
+/* Welcoming homes, clear everyday work. Shared across both themes. */
+.map-help { font-size: .875rem; color: var(--muted); margin: 8px 0 16px; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; font-size: .8125rem; }
+.map-legend span { display: flex; align-items: center; gap: 6px; }
+.map-legend i { width: 14px; height: 14px; border: 1px dashed var(--teal); border-radius: 4px; }
+.map-legend .filled { background: var(--teal); border-style: solid; }
+.map-rooms { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.map-rooms article { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--field); }
+.map-rooms h3 { font-size: .875rem; margin: 0 0 10px; }
+.map-rooms article > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.map-rooms button { min-height: 60px; display: grid; place-items: center; gap: 3px; padding: 8px 4px; color: var(--ink-2); border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--paper); transition: transform .18s, box-shadow .18s; }
+.map-rooms button.filled { border: 1px solid color-mix(in srgb, var(--teal) 35%, var(--line)); color: var(--teal); background: var(--teal-soft); }
+.map-rooms button:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.map-rooms button span { font-weight: 700; font-size: 1rem; }
+.map-rooms button small { font-size: .75rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.stat-card p { font-size: 1rem; }
+.stat-card small, .stat-card > button, .collection-breakdown span, .collection-breakdown small { font-size: .875rem; }
+.data-table th, .data-table td, .document, .priority, .order-status > span { font-size: .875rem; }
+.data-table small, .maintenance-stats small, .document-summary small, .tenant-summary small, .order-copy small { font-size: .8125rem; }
+.legal-page article > p:not(.overline) { font-size: 1rem; }
+.legal-nav-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 16px; }
+:root { --teal: #167568; --teal-soft: #e5f4f1; --radius: 20px; }
+[data-theme='dark'] { --teal: #7ad5c5; --teal-soft: #163a38; }
+.land-hero { display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; gap: 28px; padding-top: 64px; text-align: left; }
+.land-hero::before, .land-hero::after { display: none; }
+.hero-copy { min-width: 0; }
+.land-hero h1 { margin-left: 0; font-size: clamp(40px, 5.3vw, 68px); line-height: 1.08; }
+.land-hero .land-sub { margin-left: 0; color: var(--ink-2); }
+.land-hero .hero-ctas { justify-content: flex-start; }
+.hero-badge { font-family: var(--font-ui); font-size: .875rem; line-height: 1.5; letter-spacing: 0; text-transform: none; padding: 7px 12px; }
+.hero-badge i { flex-shrink: 0; animation: none; }
+.land-hint { font: 500 .875rem/1.6 var(--font-ui); letter-spacing: 0; color: var(--muted); }
+.home-art { min-width: 0; margin: 0; padding: 12px; background: #eaf3f7; border-radius: 40% 40% 24px 24px; overflow: hidden; }
+.home-art img { width: 100%; height: auto; display: block; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 32% 32% 18px 18px; }
+.home-art figcaption { display: grid; gap: 4px; padding: 12px 14px 14px; color: #28534e; font-size: .875rem; }
+.home-art figcaption span { font-weight: 700; }
+.home-art a { color: #28534e; text-underline-offset: 4px; }
+[data-theme='dark'] .home-art { background: #d8e8ef; }
+.hero-preview { margin-top: 64px; }
+.preview-window { box-shadow: var(--shadow-md); border-color: var(--line); }
+.pw-logo { color: var(--rail-ink); }
+.pw-item { color: var(--rail-muted); }
+.pw-url, .pw-row small, .pw-tile span, .pw-live, .pw-delta { font-size: .75rem; }
+.overline { font: 650 .75rem/1.5 var(--font-ui); letter-spacing: .1em; }
+.main-button, .quiet-button, .record-button, .land-links a, .side nav button { font-size: .875rem; min-height: 44px; }
+.bento-card, .step-card, .tenant-card { border-radius: 22px; }
+.bento-card p, .step-card p, .tenant-card > p:not(.overline), .auth-copy { font-size: 1rem; }
+.bento-icon { border-radius: 16px; background: var(--teal-soft); color: var(--teal); }
+.surface, .room-detail { border-radius: 18px; }
+.room-detail { transition: box-shadow .2s ease, border-color .2s ease; }
+.room-detail:hover { border-color: var(--teal); box-shadow: var(--shadow-md); }
+.bed-list button { min-height: 52px; }
+.bed-list button.occupied { background: var(--teal-soft); color: var(--teal); }
+.bed-list button span, .bed-list button b, .room-title em, .room-legend, .property-facts small { font-size: .875rem; }
+.room-title span, .room-detail footer, .property-settings-strip strong { font-size: .8125rem; }
+.tenant-list b { font-size: 1rem; white-space: normal; overflow-wrap: anywhere; }
+.tenant-list small, .tenant-list em, .tenant-balance span, .tenant-balance small { font-size: .875rem; }
+.tenant-list em.ok { color: var(--green); }
+.tenant-list em.due { color: var(--rose); }
+.tenant-form input, .tenant-form select { font: 500 1rem/1.5 var(--font-ui); min-height: 48px; }
+.tenant-form input[type='file'] { font-size: .875rem; }
+.tenant-card h2 small { font-family: var(--font-ui); font-size: .875rem; }
+.submission-queue .queue-copy { font-size: 1rem; }
+.submission-queue .submission-detail small, .expense-list small, .finance-kpis article small { font-size: .8125rem; overflow-wrap: anywhere; }
+.submission-queue .proof-list > article { border: 1px solid var(--line); padding: 16px; margin-top: 8px; }
+.submission-queue .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.auth-foot, .auth-panel-foot, .onboarding-save, .notice-field > small, .review-grid small { font-size: .8125rem; }
+.onboarding-rail li small, .mobile-step span, .policy-checks button small, legend small { font-size: .8125rem; }
+.auth-card { border-radius: 24px; }
+.land-section-head p, .model-choice p { font-size: 1rem; }
+.canvas-mix strong, .blueprint-property small, .property-model-list strong { font-size: .875rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .home-art img { animation: home-arrive .8s ease-out both; }
+  .view-stack { animation: home-arrive .25s ease-out both; }
+  @keyframes home-arrive { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+}
+@media (max-width: 900px) {
+  .land-hero { grid-template-columns: 1fr; padding-top: 36px; gap: 28px; }
+  .home-art { max-width: 600px; width: 100%; margin: 0 auto; }
+  .land-hero h1 { max-width: 18ch; }
+  .hero-preview { margin-top: 40px; }
+}
+@media (max-width: 760px) {
+  .land-hero { padding-inline: 20px; }
+  .land-hero .hero-ctas { gap: 8px; }
+  .land-hero .hero-secondary-link { width: auto; }
+  .home-art figcaption { padding: 8px; }
+  .mobile-nav button { font-size: .75rem; }
+  .mobile-topbar { flex-wrap: wrap; }
+  .mobile-lookup { min-width: 100px; }
+  .tenant-form-row { grid-template-columns: 1fr; }
+  .submission-queue .row-actions { width: 100%; }
+  .submission-queue .row-actions .main-button { flex: 1; white-space: normal; }
+  .submission-queue .submission-detail { margin-left: 0; text-align: left; }
+  .pw-tiles { gap: 8px; }
+  .pw-tile { padding: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

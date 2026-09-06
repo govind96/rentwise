@@ -68,6 +68,7 @@ export default function Landing() {
       <main>
         {/* ---------- hero ---------- */}
         <section className="hero land-hero">
+          <div className="hero-copy">
           <span className="hero-badge"><i aria-hidden="true" />Property management for Indian PGs &amp; hostels</span>
           <h1>Rent, rooms and repairs, <em>in one place</em>.</h1>
           <p className="land-sub">
@@ -78,7 +79,13 @@ export default function Landing() {
             <a className="main-button" href="/login">Start managing your PG →</a>
             <a className="hero-secondary-link" href="/dashboard?demo=1">Try the live demo <span>→</span></a>
           </div>
-          <p className="land-hint">RECORDS YOU CAN TRUST · BUILT FOR INDIAN PGS · FREE LIVE DEMO</p>
+          <p className="land-hint">A little less admin. A little more room to breathe.</p>
+          </div>
+          <figure className="home-art">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/rentwise-home.webp" width="1536" height="1024" alt="A welcoming miniature home with terracotta roofs, teal windows and a green courtyard" fetchPriority="high" />
+            <figcaption><span>Made for places people call home</span><a href="#properties">Find your property type ↗</a></figcaption>
+          </figure>
         </section>
 
         {/* ---------- pure-CSS product preview ---------- */}
@@ -93,7 +100,7 @@ export default function Landing() {
           <div className="preview-window" role="img" aria-label="Preview of the RentWise owner dashboard">
             <div className="pw-bar">
               <span className="pw-dot" /><span className="pw-dot" /><span className="pw-dot" />
-              <span className="pw-url">rentwise · today</span>
+                <span className="pw-url">An example day in RentWise</span>
             </div>
             <div className="pw-body" aria-hidden="true">
               <div className="pw-side">

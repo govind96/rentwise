@@ -1,4 +1,5 @@
 'use client';
+import OccupancyMap from '../components/OccupancyMap';
 
 import { balanceFor, money, type ActivityEvent, type RoomInventory, type Summary, type Tenant, type View, type WorkOrder } from '../shared';
 
@@ -38,7 +39,7 @@ export function Overview({ propertyName, demo, tenants, orders, metrics, invento
           {!topOrder && !pending.length && <div className="empty"><strong>All clear</strong><span>No open priorities — enjoy the calm.</span></div>}
           {pending.slice(0, topOrder ? 4 : 5).map((tenant, index) => <div className="priority-item" key={tenant.id}><span className={index < 2 ? 'priority-mark money' : 'priority-mark doc'}>{index < 2 ? '₹' : '○'}</span><div><strong>{index < 2 ? `${money.format(balanceFor(tenant))} pending from ${tenant.name}` : `${tenant.name} needs document review`}</strong><p>Room {tenant.room} · Bed {tenant.bed} {index < 2 ? '· Part payment received' : '· KYC incomplete'}</p></div><button onClick={() => index < 2 ? onPayment(tenant.id) : onTenant(tenant.id)}>{index < 2 ? 'Record' : 'Open'}</button></div>)}
         </article>
-        <article className="surface occupancy"><div className="surface-head"><div><p className="overline">OCCUPANCY</p><h2>Rooms at a glance</h2></div><button className="link-button" onClick={() => onView('property')}>All rooms →</button></div><div className="mini-rooms">{inventory.map(([room, beds]) => { const used = beds.filter((bed) => tenants.some((tenant) => tenant.room === room && tenant.bed === bed)).length; return <div key={room} className={used === beds.length ? 'mini-room full' : 'mini-room'}><div><strong>{room}</strong><span>{used}/{beds.length}</span></div><div>{beds.map((bed) => <i key={bed} className={tenants.some((tenant) => tenant.room === room && tenant.bed === bed) ? 'used' : ''}>{bed}</i>)}</div></div>; })}</div></article>
+        <OccupancyMap inventory={inventory} tenants={tenants} onTenant={onTenant} onAdd={() => onView('property')} />
       </div>
 
       <div className="overview-column">
