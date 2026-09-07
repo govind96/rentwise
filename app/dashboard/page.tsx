@@ -7,6 +7,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 're
 import BrandMark from '../components/BrandMark';
 import ErrorBoundary from '../components/ErrorBoundary';
 import ThemeToggle from '../components/ThemeToggle';
+import MobileNavigation from './components/MobileNavigation';
 import { authFetch } from '../lib/supabase-client';
 import PropertyOnboarding, { PropertyDraft, PropertyPreset, roomOccupancies } from './onboarding';
 import {
@@ -637,7 +638,7 @@ function Workspace() {
           <button className="property-select" aria-expanded={switcherOpen} onClick={() => setSwitcherOpen((open) => !open)}><span className="property-thumb">{propertyInitials(property?.name ?? 'PG')}</span><span><small>ACTIVE PROPERTY</small><strong>{property?.name ?? 'Set up your property'}</strong><em>{properties.length} {properties.length === 1 ? 'property' : 'properties'} in portfolio</em></span><b>⌄</b></button>
           {switcherOpen && <><button className="prop-backdrop" aria-label="Close property menu" onClick={() => setSwitcherOpen(false)} /><div className="prop-menu" role="menu">{properties.map((item) => <button key={item.id} role="menuitem" className={item.id === activePropertyId ? 'prop-item active' : 'prop-item'} onClick={() => switchProperty(item.id)}><span>{propertyInitials(item.name)}</span><p><strong>{item.name}</strong><small>{item.address || 'No address yet'}</small></p>{item.id === activePropertyId && <b>✓</b>}</button>)}<div className="prop-divider" /><button role="menuitem" className="prop-item add" onClick={openPropertyOnboarding}><span>＋</span><p><strong>Add another property</strong><small>Build rooms, beds and rent defaults</small></p></button>{!demo && <a role="menuitem" className="prop-item backup" href="/api/account/export"><span>⇩</span><p><strong>Download account export</strong><small>Properties, ledgers and audit history</small></p></a>}{demo && <button role="menuitem" className="prop-item backup" onClick={downloadPortfolioBackup}><span>⇩</span><p><strong>Download portfolio backup</strong><small>Keep a portable copy of this browser’s data</small></p></button>}{demo && <button role="menuitem" className="prop-item backup" onClick={() => { setSwitcherOpen(false); backupInputRef.current?.click(); }}><span>↥</span><p><strong>Restore portfolio backup</strong><small>Open a RentWise JSON backup on this device</small></p></button>}</div></>}
         </div>
-        <div className="mobile-nav">{(['overview', 'property', 'tenants', 'rent', 'bookings', 'finance', 'documents', 'maintenance'] as View[]).map((item) => <button key={item} className={view === item ? 'active' : ''} onClick={() => goTo(item)}>{({ overview: 'Today', property: 'Property', tenants: 'Tenants', rent: 'Rent', bookings: 'Bookings', finance: 'Expenses', documents: 'Documents', maintenance: 'Repairs' } as Record<View, string>)[item]}</button>)}</div>
+        <MobileNavigation view={view} onView={goTo} />
         <main className="view-stage">
         <ErrorBoundary resetKey={view}>
         <header className="page-head">

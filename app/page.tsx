@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import BrandMark from './components/BrandMark';
 import ThemeToggle from './components/ThemeToggle';
+import LivingHome from './components/LivingHome';
 
 const promptExamples = [
   'Who needs a rent reminder?',
@@ -81,11 +82,7 @@ export default function Landing() {
           </div>
           <p className="land-hint">A little less admin. A little more room to breathe.</p>
           </div>
-          <figure className="home-art">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/rentwise-home.webp" width="1536" height="1024" alt="A welcoming miniature home with terracotta roofs, teal windows and a green courtyard" fetchPriority="high" />
-            <figcaption><span>Made for places people call home</span><a href="#properties">Find your property type ↗</a></figcaption>
-          </figure>
+          <LivingHome />
         </section>
 
         {/* ---------- pure-CSS product preview ---------- */}
